@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/net/html"
 )
 
 // Child of KillStatistics
@@ -53,25 +54,17 @@ func TibiaKillstatisticsImpl(world string, BoxContentHTML string, url string) (K
 
 	// Running query over each div
 	ReaderHTML.Find("#KillStatisticsTable .TableContent tr.Odd,tr.Even").Each(func(index int, s *goquery.Selection) {
-		DataColumns := s.Find("td").Nodes
+		// Extract kill statistics from table row
+		killStats := extractKillStatistics(s.Find("td").Nodes)
 
-		KillStatisticsLastDayKilledPlayers := TibiaDataStringToInteger(DataColumns[1].FirstChild.Data)
-		TotalLastDayKilledPlayers += KillStatisticsLastDayKilledPlayers
-		KillStatisticsLastDayKilledByPlayers := TibiaDataStringToInteger(DataColumns[2].FirstChild.Data)
-		TotalLastDayKilledByPlayers += KillStatisticsLastDayKilledByPlayers
-		KillStatisticsLastWeekKilledPlayers := TibiaDataStringToInteger(DataColumns[3].FirstChild.Data)
-		TotalLastWeekKilledPlayers += KillStatisticsLastWeekKilledPlayers
-		KillStatisticsLastWeekKilledByPlayers := TibiaDataStringToInteger(DataColumns[4].FirstChild.Data)
-		TotalLastWeekKilledByPlayers += KillStatisticsLastWeekKilledByPlayers
+		// Accumulate totals
+		TotalLastDayKilledPlayers += killStats.LastDayKilledPlayers
+		TotalLastDayKilledByPlayers += killStats.LastDayKilledByPlayers
+		TotalLastWeekKilledPlayers += killStats.LastWeekKilledPlayers
+		TotalLastWeekKilledByPlayers += killStats.LastWeekKilledByPlayers
 
 		// Append new Entry item to KillStatisticsData
-		KillStatisticsData = append(KillStatisticsData, Entry{
-			Race:                    TibiaDataSanitizeEscapedString(DataColumns[0].FirstChild.Data),
-			LastDayKilledPlayers:    KillStatisticsLastDayKilledPlayers,
-			LastDayKilledByPlayers:  KillStatisticsLastDayKilledByPlayers,
-			LastWeekKilledPlayers:   KillStatisticsLastWeekKilledPlayers,
-			LastWeekKilledByPlayers: KillStatisticsLastWeekKilledByPlayers,
-		})
+		KillStatisticsData = append(KillStatisticsData, killStats)
 	})
 
 	//
@@ -96,4 +89,15 @@ func TibiaKillstatisticsImpl(world string, BoxContentHTML string, url string) (K
 			},
 		},
 	}, nil
+}
+
+// Helper function to extract and convert kill statistics
+func extractKillStatistics(dataColumns []*html.Node) Entry {
+	return Entry{
+		Race:                    TibiaDataSanitizeEscapedString(dataColumns[0].FirstChild.Data),
+		LastDayKilledPlayers:    TibiaDataStringToInteger(dataColumns[1].FirstChild.Data),
+		LastDayKilledByPlayers:  TibiaDataStringToInteger(dataColumns[2].FirstChild.Data),
+		LastWeekKilledPlayers:   TibiaDataStringToInteger(dataColumns[3].FirstChild.Data),
+		LastWeekKilledByPlayers: TibiaDataStringToInteger(dataColumns[4].FirstChild.Data),
+	}
 }

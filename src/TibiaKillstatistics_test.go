@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tibiadata/tibiadata-api-go/src/static"
+	"golang.org/x/net/html"
 )
 
 func TestAntica(t *testing.T) {
@@ -71,5 +72,119 @@ func BenchmarkAntica(b *testing.B) {
 		}
 
 		assert.Equal("Antica", anticaJson.KillStatistics.World)
+	}
+}
+
+func TestExtractKillStatistics(t *testing.T) {
+	// Create mock HTML nodes for testing
+	raceNode := &html.Node{
+		FirstChild: &html.Node{
+			Data: "Dragon",
+		},
+	}
+
+	lastDayKilledPlayersNode := &html.Node{
+		FirstChild: &html.Node{
+			Data: "150",
+		},
+	}
+
+	lastDayKilledByPlayersNode := &html.Node{
+		FirstChild: &html.Node{
+			Data: "25",
+		},
+	}
+
+	lastWeekKilledPlayersNode := &html.Node{
+		FirstChild: &html.Node{
+			Data: "1200",
+		},
+	}
+
+	lastWeekKilledByPlayersNode := &html.Node{
+		FirstChild: &html.Node{
+			Data: "85",
+		},
+	}
+
+	// Create dataColumns slice
+	dataColumns := []*html.Node{
+		raceNode,
+		lastDayKilledPlayersNode,
+		lastDayKilledByPlayersNode,
+		lastWeekKilledPlayersNode,
+		lastWeekKilledByPlayersNode,
+	}
+
+	// Call the function
+	result := extractKillStatistics(dataColumns)
+
+	// Define expected values
+	expected := Entry{
+		Race:                    "Dragon",
+		LastDayKilledPlayers:    150,
+		LastDayKilledByPlayers:  25,
+		LastWeekKilledPlayers:   1200,
+		LastWeekKilledByPlayers: 85,
+	}
+
+	// Assert results
+	if result.Race != expected.Race {
+		t.Errorf("Race: got %v, want %v", result.Race, expected.Race)
+	}
+
+	if result.LastDayKilledPlayers != expected.LastDayKilledPlayers {
+		t.Errorf("LastDayKilledPlayers: got %v, want %v", result.LastDayKilledPlayers, expected.LastDayKilledPlayers)
+	}
+
+	if result.LastDayKilledByPlayers != expected.LastDayKilledByPlayers {
+		t.Errorf("LastDayKilledByPlayers: got %v, want %v", result.LastDayKilledByPlayers, expected.LastDayKilledByPlayers)
+	}
+
+	if result.LastWeekKilledPlayers != expected.LastWeekKilledPlayers {
+		t.Errorf("LastWeekKilledPlayers: got %v, want %v", result.LastWeekKilledPlayers, expected.LastWeekKilledPlayers)
+	}
+
+	if result.LastWeekKilledByPlayers != expected.LastWeekKilledByPlayers {
+		t.Errorf("LastWeekKilledByPlayers: got %v, want %v", result.LastWeekKilledByPlayers, expected.LastWeekKilledByPlayers)
+	}
+}
+
+// Test with edge cases
+func TestExtractKillStatisticsEdgeCases(t *testing.T) {
+	// Test with empty strings
+	emptyNode := &html.Node{
+		FirstChild: &html.Node{
+			Data: "",
+		},
+	}
+
+	// Test with zero values
+	zeroNode := &html.Node{
+		FirstChild: &html.Node{
+			Data: "0",
+		},
+	}
+
+	dataColumns := []*html.Node{
+		emptyNode, // Race
+		zeroNode,  // LastDayKilledPlayers
+		zeroNode,  // LastDayKilledByPlayers
+		zeroNode,  // LastWeekKilledPlayers
+		zeroNode,  // LastWeekKilledByPlayers
+	}
+
+	result := extractKillStatistics(dataColumns)
+
+	if result.Race != "" {
+		t.Errorf("Empty race: got %v, want empty string", result.Race)
+	}
+
+	if result.LastDayKilledPlayers != 0 {
+		t.Errorf("Zero last day killed players: got %v, want 0", result.LastDayKilledPlayers)
+	}
+
+	if result.LastWeekKilledByPlayers != 0 {
+		t.Errorf("Zero last week killed by players: got %v, want 0", result.LastWeekKilledByPlayers)
 	}
 }
