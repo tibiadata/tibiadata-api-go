@@ -46,9 +46,10 @@ func TibiaGuildsOverviewImpl(world string, BoxContentHTML string, url string) (G
 		// Figure out the guild category
 		s.Find(".Text").Each(func(index int, s *goquery.Selection) {
 			tableName := s.Nodes[0].FirstChild.Data
-			if strings.Contains(tableName, "Active Guilds") {
+			switch {
+			case strings.Contains(tableName, "Active Guilds"):
 				GuildCategory = "active"
-			} else if strings.Contains(tableName, "Guilds in Course of Formation") {
+			case strings.Contains(tableName, "Guilds in Course of Formation"):
 				GuildCategory = "formation"
 			}
 		})
@@ -75,9 +76,10 @@ func TibiaGuildsOverviewImpl(world string, BoxContentHTML string, url string) (G
 				}
 
 				// Adding OneGuild to correct category
-				if GuildCategory == "active" {
+				switch GuildCategory {
+				case "active":
 					ActiveGuilds = append(ActiveGuilds, OneGuild)
-				} else if GuildCategory == "formation" {
+				case "formation":
 					FormationGuilds = append(FormationGuilds, OneGuild)
 				}
 			})
