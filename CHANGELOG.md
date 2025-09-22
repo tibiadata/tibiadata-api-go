@@ -1,5 +1,31 @@
 # Changelog
 
+## [4.5.0] - 2025-09-22
+
+### Changed
+
+- ci: use multiple runners for build ([#508](https://github.com/tibiadata/tibiadata-api-go/pull/508) by [tobiasehlert](https://github.com/tobiasehlert))
+- ci: use sha instead of tag on steps ([#487](https://github.com/tibiadata/tibiadata-api-go/pull/487) by [tobiasehlert](https://github.com/tobiasehlert))
+- lowercase GitHub organisation name ([#507](https://github.com/tibiadata/tibiadata-api-go/pull/507) by [tobiasehlert](https://github.com/tobiasehlert))
+- bump actions/setup-go from 5.5.0 to 6.0.0 ([#495](https://github.com/tibiadata/tibiadata-api-go/pull/495) by [dependabot](https://github.com/dependabot))
+- bump codecov/codecov-action from 5.4.3 to 5.5.1 ([#488](https://github.com/tibiadata/tibiadata-api-go/pull/488), [#496](https://github.com/tibiadata/tibiadata-api-go/pull/496) by [dependabot](https://github.com/dependabot))
+- bump github/codeql-action from 3.29.10 to 3.30.3 ([#489](https://github.com/tibiadata/tibiadata-api-go/pull/489), [#494](https://github.com/tibiadata/tibiadata-api-go/pull/494), [#497](https://github.com/tibiadata/tibiadata-api-go/pull/497), [#500](https://github.com/tibiadata/tibiadata-api-go/pull/500), [#501](https://github.com/tibiadata/tibiadata-api-go/pull/501) by [dependabot](https://github.com/dependabot))
+- bump sigstore/cosign-installer from 3.9.2 to 3.10.0 ([#503](https://github.com/tibiadata/tibiadata-api-go/pull/503) by [dependabot](https://github.com/dependabot))
+- bump alpine from 3.21.3 to 3.22.1 ([#475](https://github.com/tibiadata/tibiadata-api-go/pull/475), [#482](https://github.com/tibiadata/tibiadata-api-go/pull/482) by [dependabot](https://github.com/dependabot))
+- bump golang from 1.24.2 to 1.25.1 ([#477](https://github.com/tibiadata/tibiadata-api-go/pull/477), [#481](https://github.com/tibiadata/tibiadata-api-go/pull/481), [#484](https://github.com/tibiadata/tibiadata-api-go/pull/484), [#486](https://github.com/tibiadata/tibiadata-api-go/pull/486), [#502](https://github.com/tibiadata/tibiadata-api-go/pull/502) by [dependabot](https://github.com/dependabot))
+- bump github.com/gin-gonic/gin from 1.10.0 to 1.11.0 ([#474](https://github.com/tibiadata/tibiadata-api-go/pull/474), [#510](https://github.com/tibiadata/tibiadata-api-go/pull/510) by [dependabot](https://github.com/dependabot))
+- bump github.com/PuerkitoBio/goquery from 1.10.2 to 1.10.3 ([#468](https://github.com/tibiadata/tibiadata-api-go/pull/468) by [dependabot](https://github.com/dependabot))
+- bump github.com/stretchr/testify from 1.10.0 to 1.11.1 ([#492](https://github.com/tibiadata/tibiadata-api-go/pull/492), [#493](https://github.com/tibiadata/tibiadata-api-go/pull/493) by [dependabot](https://github.com/dependabot))
+- bump golang.org/x/net from 0.36.0 to 0.38.0 ([#469](https://github.com/tibiadata/tibiadata-api-go/pull/469) by [dependabot](https://github.com/dependabot))
+- bump golang.org/x/text from 0.24.0 to 0.29.0 ([#472](https://github.com/tibiadata/tibiadata-api-go/pull/472), [#476](https://github.com/tibiadata/tibiadata-api-go/pull/476), [#480](https://github.com/tibiadata/tibiadata-api-go/pull/480), [#483](https://github.com/tibiadata/tibiadata-api-go/pull/483), [#498](https://github.com/tibiadata/tibiadata-api-go/pull/498) by [dependabot](https://github.com/dependabot))
+
+### Fixed
+
+- ci: use dockerhub variable instead ([#509](https://github.com/tibiadata/tibiadata-api-go/pull/509) by [tobiasehlert](https://github.com/tobiasehlert))
+- character death entry with lowercased of-creature ([#505](https://github.com/tibiadata/tibiadata-api-go/pull/505) by [tobiasehlert](https://github.com/tobiasehlert))
+- remove iso-encoding for umlaut issue ([#506](https://github.com/tibiadata/tibiadata-api-go/pull/506) by [tobiasehlert](https://github.com/tobiasehlert))
+- use 555 for binary ([#499](https://github.com/tibiadata/tibiadata-api-go/pull/499) by [tobiasehlert](https://github.com/tobiasehlert))
+
 ## [4.4.0] - 2025-04-08
 
 ### Added
@@ -626,6 +652,7 @@ Head over to [tibiadata.com](https://tibiadata.com/2022/03/tibiadata-api-v3-rele
 
 Initial commit
 
+[4.5.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.4.0...v4.5.0
 [4.4.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.3.6...v4.4.0
 [4.3.6]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.3.5...v4.3.6
 [4.3.5]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.3.4...v4.3.5
