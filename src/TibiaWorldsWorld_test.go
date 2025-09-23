@@ -8,6 +8,35 @@ import (
 	"github.com/tibiadata/tibiadata-api-go/src/static"
 )
 
+func TestWorldAntica(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/worlds/world/Antica.html")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("File reading error: %s", err)
+	}
+
+	worldJson, err := TibiaWorldsWorldImpl("Antica", string(data), "https://www.tibia.com/community/?subtopic=worlds&world=Antica")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	world := worldJson.World
+	information := worldJson.Information
+
+	assert.Equal("https://www.tibia.com/community/?subtopic=worlds&world=Antica", information.TibiaURLs[0])
+
+	umlautPlayer := world.OnlinePlayers[171]
+	assert.Equal("Nöber", umlautPlayer.Name)
+	assert.Equal(455, umlautPlayer.Level)
+	assert.Equal("Elder Druid", umlautPlayer.Vocation)
+}
+
 func TestWorldEndebra(t *testing.T) {
 	file, err := static.TestFiles.Open("testdata/worlds/world/Endebra.html")
 	if err != nil {
