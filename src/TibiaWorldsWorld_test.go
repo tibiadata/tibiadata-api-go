@@ -8,6 +8,35 @@ import (
 	"github.com/tibiadata/tibiadata-api-go/src/static"
 )
 
+func TestWorldAntica(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/worlds/world/Antica.html")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("File reading error: %s", err)
+	}
+
+	worldJson, err := TibiaWorldsWorldImpl("Antica", string(data), "https://www.tibia.com/community/?subtopic=worlds&world=Antica")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	world := worldJson.World
+	information := worldJson.Information
+
+	assert.Equal("https://www.tibia.com/community/?subtopic=worlds&world=Antica", information.TibiaURLs[0])
+
+	umlautPlayer := world.OnlinePlayers[171]
+	assert.Equal("Nöber", umlautPlayer.Name)
+	assert.Equal(455, umlautPlayer.Level)
+	assert.Equal("Elder Druid", umlautPlayer.Vocation)
+}
+
 func TestWorldEndebra(t *testing.T) {
 	file, err := static.TestFiles.Open("testdata/worlds/world/Endebra.html")
 	if err != nil {
@@ -70,8 +99,8 @@ func TestWorldPremia(t *testing.T) {
 	world := worldJson.World
 
 	assert.Equal("Premia", world.Name)
-	assert.Equal("offline", world.Status)
-	assert.Equal(0, world.PlayersOnline)
+	assert.Equal("online", world.Status)
+	assert.Equal(53, world.PlayersOnline)
 	assert.Equal(531, world.RecordPlayers)
 	assert.Equal("2013-08-08T15:30:30Z", world.RecordDate)
 	assert.Equal("2002-04", world.CreationDate)
@@ -79,16 +108,16 @@ func TestWorldPremia(t *testing.T) {
 	assert.Equal("Open PvP", world.PvpType)
 	assert.True(world.PremiumOnly)
 	assert.Equal("regular", world.TransferType)
-	assert.Equal(4, len(world.WorldsQuestTitles))
-	assert.Equal("Rise of Devovorga", world.WorldsQuestTitles[0])
-	assert.Equal("Bewitched", world.WorldsQuestTitles[1])
-	assert.Equal("The Colours of Magic", world.WorldsQuestTitles[2])
+	assert.Equal(7, len(world.WorldsQuestTitles))
+	assert.Equal("The Lightbearer", world.WorldsQuestTitles[0])
+	assert.Equal("Rise of Devovorga", world.WorldsQuestTitles[1])
+	assert.Equal("Annual Autumn Vintage", world.WorldsQuestTitles[2])
 	assert.Equal("A Piece of Cake", world.WorldsQuestTitles[3])
 	assert.True(world.BattleyeProtected)
 	assert.Equal("2017-09-05", world.BattleyeDate)
 	assert.Equal("regular", world.GameWorldType)
 	assert.Empty(world.TournamentWorldType)
-	assert.Equal(0, len(world.OnlinePlayers))
+	assert.Equal(53, len(world.OnlinePlayers))
 }
 
 func TestWorldWintera(t *testing.T) {
