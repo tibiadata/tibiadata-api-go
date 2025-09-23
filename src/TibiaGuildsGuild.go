@@ -122,7 +122,7 @@ func TibiaGuildsGuildImpl(guild string, BoxContentHTML string, url string) (Guil
 		return GuildResponse{}, fmt.Errorf("[error] TibiaGuildsGuildImpl failed at InnerTableContainerTMPB ReaderHTML.Find, err: %s", err)
 	}
 
-	for _, line := range strings.Split(strings.TrimSuffix(InnerTableContainerTMPB, "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSuffix(InnerTableContainerTMPB, "\n"), "\n") {
 		// Guild information
 		if !GuildDescriptionFinished {
 			// First line is the description..

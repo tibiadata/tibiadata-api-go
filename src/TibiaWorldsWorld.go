@@ -136,8 +136,8 @@ func TibiaWorldsWorldImpl(world string, BoxContentHTML string, url string) (Worl
 
 			if WorldsInformationLeftColumn == "World Quest Titles" {
 				if WorldsInformationRightColumn != "This game world currently has no title." {
-					WorldsQuestTitlesTmp := strings.Split(WorldsInformationRightColumn, ", ")
-					for _, str := range WorldsQuestTitlesTmp {
+					WorldsQuestTitlesTmp := strings.SplitSeq(WorldsInformationRightColumn, ", ")
+					for str := range WorldsQuestTitlesTmp {
 						if str != "" {
 							WorldsQuestTitles = append(WorldsQuestTitles, TibiaDataRemoveURLs(str))
 						}

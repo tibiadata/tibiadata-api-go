@@ -153,8 +153,8 @@ func TibiaCreaturesCreatureImpl(race string, BoxContentHTML string, url string) 
 		CreatureExperiencePoints = TibiaDataStringToInteger(subma3[0][1])
 		if subma3[0][2] != "nothing" {
 			CreatureIsLootable = true
-			CreatureLootListTmp := strings.Split(strings.Replace(strings.Replace(subma3[0][2], "items ", "", 1), " and sometimes other ", "", 1), ", ")
-			for _, str := range CreatureLootListTmp {
+			CreatureLootListTmp := strings.SplitSeq(strings.Replace(strings.Replace(subma3[0][2], "items ", "", 1), " and sometimes other ", "", 1), ", ")
+			for str := range CreatureLootListTmp {
 				if str != "" {
 					CreatureLootList = append(CreatureLootList, str)
 				}
