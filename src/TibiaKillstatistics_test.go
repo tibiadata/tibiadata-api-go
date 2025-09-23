@@ -129,25 +129,7 @@ func TestExtractKillStatistics(t *testing.T) {
 	}
 
 	// Assert results
-	if result.Race != expected.Race {
-		t.Errorf("Race: got %v, want %v", result.Race, expected.Race)
-	}
-
-	if result.LastDayKilledPlayers != expected.LastDayKilledPlayers {
-		t.Errorf("LastDayKilledPlayers: got %v, want %v", result.LastDayKilledPlayers, expected.LastDayKilledPlayers)
-	}
-
-	if result.LastDayKilledByPlayers != expected.LastDayKilledByPlayers {
-		t.Errorf("LastDayKilledByPlayers: got %v, want %v", result.LastDayKilledByPlayers, expected.LastDayKilledByPlayers)
-	}
-
-	if result.LastWeekKilledPlayers != expected.LastWeekKilledPlayers {
-		t.Errorf("LastWeekKilledPlayers: got %v, want %v", result.LastWeekKilledPlayers, expected.LastWeekKilledPlayers)
-	}
-
-	if result.LastWeekKilledByPlayers != expected.LastWeekKilledByPlayers {
-		t.Errorf("LastWeekKilledByPlayers: got %v, want %v", result.LastWeekKilledByPlayers, expected.LastWeekKilledByPlayers)
-	}
+	assert.Equal(t, expected, result)
 }
 
 // Test with edge cases
