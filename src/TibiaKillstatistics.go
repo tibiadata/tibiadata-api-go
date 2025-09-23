@@ -93,6 +93,10 @@ func TibiaKillstatisticsImpl(world string, BoxContentHTML string, url string) (K
 
 // Helper function to extract and convert kill statistics
 func extractKillStatistics(dataColumns []*html.Node) Entry {
+	if len(dataColumns) < 5 {
+		// Not enough columns; return zero-value Entry
+		return Entry{}
+	}
 	return Entry{
 		Race:                    TibiaDataSanitizeEscapedString(dataColumns[0].FirstChild.Data),
 		LastDayKilledPlayers:    TibiaDataStringToInteger(dataColumns[1].FirstChild.Data),
