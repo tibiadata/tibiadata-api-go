@@ -106,10 +106,11 @@ func TibiaSpellsSpellImpl(spell string, BoxContentHTML string, url string) (Spel
 			SectionName := s.Find(".CaptionInnerContainer div.Text").Text()
 
 			// Determine if this is the spell or rune section
-			if SectionName == "Spell Information" {
+			switch SectionName {
+			case "Spell Information":
 				SpellInformationSection = "spell"
 				SpellsHasSpellSection = true
-			} else if SectionName == "Rune Information" {
+			case "Rune Information":
 				SpellInformationSection = "rune"
 				SpellsHasRuneSection = true
 			}

@@ -279,9 +279,10 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					AccountInformationData.Created = TibiaDataDatetime(RowData)
 				case "Position:":
 					TmpPosition := strings.Split(RowData, "<")
-					if SectionName == "Character Information" {
+					switch SectionName {
+					case "Character Information":
 						CharacterInfoData.Position = strings.TrimSpace(TmpPosition[0])
-					} else if SectionName == "Account Information" {
+					case "Account Information":
 						AccountInformationData.Position = strings.TrimSpace(TmpPosition[0])
 					}
 
