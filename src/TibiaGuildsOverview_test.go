@@ -4,8 +4,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/TibiaData/tibiadata-api-go/src/static"
 	"github.com/stretchr/testify/assert"
+	"github.com/tibiadata/tibiadata-api-go/src/static"
 )
 
 func TestPremia(t *testing.T) {

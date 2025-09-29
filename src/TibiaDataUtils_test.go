@@ -150,16 +150,19 @@ func TestEscaper(t *testing.T) {
 		strOne   = "god durin"
 		strTwo   = "god+durin"
 		strThree = "gód"
+		strFour  = "Näurin"
 	)
 
 	sanitizedStrOne := TibiaDataQueryEscapeString(strOne)
 	sanitizedStrTwo := TibiaDataQueryEscapeString(strTwo)
 	sanitizedStrThree := TibiaDataQueryEscapeString(strThree)
+	sanitizedStrFour := TibiaDataQueryEscapeString(strFour)
 
 	assert := assert.New(t)
 	assert.Equal(sanitizedStrOne, "god+durin")
 	assert.Equal(sanitizedStrTwo, "god+durin")
-	assert.Equal(sanitizedStrThree, "g%F3d")
+	assert.Equal(sanitizedStrThree, "g%C3%B3d")
+	assert.Equal(sanitizedStrFour, "N%C3%A4urin")
 }
 
 func TestDateParser(t *testing.T) {

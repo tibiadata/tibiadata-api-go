@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 #v5.0.0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 #v6.0.0
         with:
           go-version-file: go.mod
 
@@ -34,16 +34,16 @@ jobs:
           echo "${contents}" > docs/swagger.json
 
       - name: Upload swagger.json to release page
-        uses: svenstaro/upload-release-action@v2
+        uses: svenstaro/upload-release-action@81c65b7cd4de9b2570615ce3aad67a41de5b1a13 #2.11.2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: docs/swagger.json
           tag: ${{ github.ref }}
 
       - name: Trigger workflow in tibiadata-api-docs repo
-        uses: peter-evans/repository-dispatch@v3
+        uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0 #v3.0.0
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
-          repository: TibiaData/tibiadata-api-docs
+          repository: tibiadata/tibiadata-api-docs
           event-type: tibiadata-api-docs-release-update
           client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}", "tag_name": "${{ github.event.release.tag_name }}"}'

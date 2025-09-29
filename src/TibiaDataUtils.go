@@ -2,7 +2,6 @@ package main
 
 import (
 	"html"
-	"io"
 	"log"
 	"net/url"
 	"os"
@@ -13,7 +12,6 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/text/cases"
-	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/norm"
 )
@@ -87,9 +85,6 @@ func TibiaDataQueryEscapeString(data string) string {
 	// switching "+" to " "
 	data = strings.ReplaceAll(data, "+", " ")
 
-	// encoding string to latin-1
-	data, _ = TibiaDataConvertEncodingtoISO88591(data)
-
 	// returning with QueryEscape function
 	return url.QueryEscape(data)
 }
@@ -134,7 +129,10 @@ func TibiaDataStringToInteger(data string) int {
 
 	returnData, err := strconv.Atoi(str)
 	if err != nil {
-		log.Printf("[warning] TibiaDataStringToInteger: couldn't convert string into int. error: %s", err)
+		if TibiaDataDebug {
+			log.Printf("[warning] TibiaDataStringToInteger: failed to parse '%s' as integer - returning 0", data)
+		}
+		return 0
 	}
 
 	return returnData
@@ -187,16 +185,6 @@ func RemoveHtmlTag(s string) string {
 	}
 	s = builder.String()
 	return s
-}
-
-// TibiaDataConvertEncodingtoISO88591 func - convert string from UTF-8 to latin1 (ISO 8859-1)
-func TibiaDataConvertEncodingtoISO88591(data string) (string, error) {
-	return charmap.ISO8859_1.NewEncoder().String(data)
-}
-
-// TibiaDataConvertEncodingtoUTF8 func - convert string from latin1 (ISO 8859-1) to UTF-8
-func TibiaDataConvertEncodingtoUTF8(data io.Reader) io.Reader {
-	return norm.NFKC.Reader(charmap.ISO8859_1.NewDecoder().Reader(data))
 }
 
 // TibiaDataSanitizeEscapedString func - run unescape string on string

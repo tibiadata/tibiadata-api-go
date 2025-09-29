@@ -1,3 +1,3 @@
-module github.com/TibiaData/tibiadata-api-go/src/static
+module github.com/tibiadata/tibiadata-api-go/src/static
 
-go 1.24.0
+go 1.25.0

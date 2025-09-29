@@ -4,7 +4,7 @@ import (
 	"log"
 	"sync/atomic"
 
-	"github.com/TibiaData/tibiadata-api-go/src/validation"
+	"github.com/tibiadata/tibiadata-api-go/src/validation"
 )
 
 var (
@@ -42,7 +42,7 @@ var (
 // @contact.email  tobias@tibiadata.com
 
 // @license.name  MIT
-// @license.url   https://github.com/TibiaData/tibiadata-api-go/blob/main/LICENSE
+// @license.url   https://github.com/tibiadata/tibiadata-api-go/blob/main/LICENSE
 
 // @schemes   http
 // @host      localhost:8080

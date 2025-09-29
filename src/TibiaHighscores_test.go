@@ -4,9 +4,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/TibiaData/tibiadata-api-go/src/static"
-	"github.com/TibiaData/tibiadata-api-go/src/validation"
 	"github.com/stretchr/testify/assert"
+	"github.com/tibiadata/tibiadata-api-go/src/static"
+	"github.com/tibiadata/tibiadata-api-go/src/validation"
 )
 
 func TestHighscoresAll(t *testing.T) {

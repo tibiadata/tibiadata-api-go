@@ -8,10 +8,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/TibiaData/tibiadata-api-go/src/static"
-	"github.com/TibiaData/tibiadata-api-go/src/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/tibiadata/tibiadata-api-go/src/static"
+	"github.com/tibiadata/tibiadata-api-go/src/validation"
 )
 
 func TestNumber1(t *testing.T) {
@@ -4045,6 +4045,96 @@ func TestNumber17(t *testing.T) {
 			Level:  645,
 			Reason: "Slain at Level 645 by Shooter Scotty, Simpkan, Spektrozz, Toxic Raksoo, Delerioo, Gugu Lurifax and Viniciao Novamente.",
 			Time:   "2025-03-25T11:08:07Z",
+		},
+	} {
+		assert.True(
+			reflect.DeepEqual(deaths[idx].Assists, tc.Assists),
+			"Wrong assists\nidx: %d\nwant: %#v\n\ngot: %#v",
+			idx, tc.Assists, deaths[idx].Assists,
+		)
+		assert.True(
+			reflect.DeepEqual(deaths[idx].Killers, tc.Killers),
+			"Wrong killers\nidx: %d\nwant: %#v\n\ngot: %#v",
+			idx, tc.Killers, deaths[idx].Killers,
+		)
+		assert.Equal(
+			deaths[idx].Level, tc.Level,
+			"Wrong Level\nidx: %d\nwant: %d\n\ngot: %d",
+			idx, tc.Level, deaths[idx].Level,
+		)
+		assert.Equal(
+			deaths[idx].Reason, tc.Reason,
+			"Wrong Reason\nidx: %d\nwant: %s\n\ngot: %s",
+			idx, tc.Reason, deaths[idx].Reason,
+		)
+		assert.Equal(
+			tc.Time, deaths[idx].Time,
+			"Wrong Time\nidx: %d\nwant: %s\n\ngot: %s",
+			idx, tc.Time, deaths[idx].Time,
+		)
+	}
+}
+
+func TestNumber18(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/characters/Tirador Azteca.html")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("File reading error: %s", err)
+	}
+
+	characterJson, err := TibiaCharactersCharacterImpl(string(data), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	character := characterJson.Character.CharacterInfo
+
+	assert.Equal("Tirador Azteca", character.Name)
+	assert.False(characterJson.Character.DeathsTruncated)
+
+	// validate death data
+	assert.Equal(3, len(characterJson.Character.Deaths))
+	deaths := characterJson.Character.Deaths
+
+	for idx, tc := range []struct {
+		Assists []Killers
+		Killers []Killers
+		Level   int
+		Reason  string
+		Time    string
+	}{
+		{
+			Assists: []Killers{},
+			Killers: []Killers{
+				{Name: "retainer of Baeloc", Player: false, Traded: false, Summon: ""},
+			},
+			Level:  500,
+			Reason: "Died at Level 500 by retainer of Baeloc.",
+			Time:   "2025-09-14T20:29:01Z",
+		},
+		{
+			Assists: []Killers{},
+			Killers: []Killers{
+				{Name: "terrorsleep", Player: false, Traded: false, Summon: ""},
+			},
+			Level:  494,
+			Reason: "Died at Level 494 by terrorsleep.",
+			Time:   "2025-09-07T02:39:55Z",
+		},
+		{
+			Assists: []Killers{},
+			Killers: []Killers{
+				{Name: "headwalker", Player: false, Traded: false, Summon: ""},
+			},
+			Level:  487,
+			Reason: "Died at Level 487 by headwalker.",
+			Time:   "2025-08-29T19:09:51Z",
 		},
 	} {
 		assert.True(

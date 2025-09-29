@@ -7,7 +7,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"github.com/TibiaData/tibiadata-api-go/src/tibiamapping"
+	"github.com/tibiadata/tibiadata-api-go/src/tibiamapping"
 )
 
 // validator is a local struct representing some validation data

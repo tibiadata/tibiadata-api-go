@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/TibiaData/tibiadata-api-go/src/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
+	"github.com/tibiadata/tibiadata-api-go/src/validation"
 )
 
 // Debug stores some debug informations

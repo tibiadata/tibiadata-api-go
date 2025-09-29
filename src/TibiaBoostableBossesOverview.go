@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TibiaData/tibiadata-api-go/src/validation"
+	"github.com/tibiadata/tibiadata-api-go/src/validation"
 )
 
 // Child of BoostableBoss (used for list of boostable bosses and boosted boss section)

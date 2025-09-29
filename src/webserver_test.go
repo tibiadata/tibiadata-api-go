@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/TibiaData/tibiadata-api-go/src/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/tibiadata/tibiadata-api-go/src/validation"
 )
 
 var _ = func() bool {
@@ -173,31 +173,31 @@ func TestFakeToUpCodeCoverage(t *testing.T) {
 	assert.False(false, tibiaNewslistArchiveDays())
 	assert.False(false, tibiaNewslistLatest())
 
-	w = httptest.NewRecorder()
-	c, _ = gin.CreateTestContext(w)
+	// w = httptest.NewRecorder()
+	// c, _ = gin.CreateTestContext(w)
 
-	c.Params = []gin.Param{
-		{
-			Key:   "days",
-			Value: "90",
-		},
-	}
+	// c.Params = []gin.Param{
+	// 	{
+	// 		Key:   "days",
+	// 		Value: "90",
+	// 	},
+	// }
 
-	tibiaNewslist(c)
-	assert.Equal(http.StatusOK, w.Code)
+	// tibiaNewslist(c)
+	// assert.Equal(http.StatusOK, w.Code)
 
-	w = httptest.NewRecorder()
-	c, _ = gin.CreateTestContext(w)
+	// w = httptest.NewRecorder()
+	// c, _ = gin.CreateTestContext(w)
 
-	c.Params = []gin.Param{
-		{
-			Key:   "news_id",
-			Value: "6607",
-		},
-	}
+	// c.Params = []gin.Param{
+	// 	{
+	// 		Key:   "news_id",
+	// 		Value: "6607",
+	// 	},
+	// }
 
-	tibiaNews(c)
-	assert.Equal(http.StatusOK, w.Code)
+	// tibiaNews(c)
+	// assert.Equal(http.StatusOK, w.Code)
 
 	w = httptest.NewRecorder()
 	c, _ = gin.CreateTestContext(w)

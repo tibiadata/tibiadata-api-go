@@ -1,5 +1,5 @@
 # get golang container
-FROM golang:1.24.4 AS builder
+FROM golang:1.25.1 AS builder
 
 # get args
 ARG TibiaDataBuildBuilder=dockerfile
@@ -24,7 +24,7 @@ RUN go mod download && \
 
 
 # get alpine container
-FROM alpine:3.22.0 AS app
+FROM alpine:3.22.1 AS app
 
 # create workdir
 WORKDIR /opt/app
@@ -39,7 +39,7 @@ RUN apk --no-cache add ca-certificates tzdata && \
 USER nonroot:nonroot
 
 # copy binary from builder
-COPY --from=builder --chown=nonroot:nonroot --chmod=544 /go/src/app .
+COPY --from=builder --chown=nonroot:nonroot --chmod=555 /go/src/app .
 
 # expose port 8080
 EXPOSE 8080

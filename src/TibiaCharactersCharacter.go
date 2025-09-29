@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/TibiaData/tibiadata-api-go/src/validation"
+	"github.com/tibiadata/tibiadata-api-go/src/validation"
 	//"time"
 )
 
@@ -279,9 +279,10 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					AccountInformationData.Created = TibiaDataDatetime(RowData)
 				case "Position:":
 					TmpPosition := strings.Split(RowData, "<")
-					if SectionName == "Character Information" {
+					switch SectionName {
+					case "Character Information":
 						CharacterInfoData.Position = strings.TrimSpace(TmpPosition[0])
-					} else if SectionName == "Account Information" {
+					case "Account Information":
 						AccountInformationData.Position = strings.TrimSpace(TmpPosition[0])
 					}
 
@@ -811,7 +812,7 @@ func TibiaDataParseKiller(data string) (string, bool, bool, string) {
 // containsCreaturesWithOf checks if creature is present in special creatures list
 func containsCreaturesWithOf(str string) bool {
 	// trim away "an " and "a "
-	str = strings.TrimPrefix(strings.TrimPrefix(str, "an "), "a ")
+	str = strings.ToLower(strings.TrimPrefix(strings.TrimPrefix(str, "an "), "a "))
 
 	switch str {
 	case "acolyte of darkness",
