@@ -273,7 +273,7 @@ jobs:
           fi
 
       - name: Trigger workflow in tibiadata-argocd-app-of-apps repo
-        uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0 #v3.0.0
+        uses: peter-evans/repository-dispatch@5fc4efd1a4797ddb68ffd0714a238564e4cc0e6f #v4.0.0
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           repository: tibiadata/tibiadata-argocd-app-of-apps
@@ -295,7 +295,7 @@ jobs:
 
     steps:
       - name: Trigger workflow in tibiadata-helm-charts repo
-        uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0 #v3.0.0
+        uses: peter-evans/repository-dispatch@5fc4efd1a4797ddb68ffd0714a238564e4cc0e6f #v4.0.0
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
           repository: tibiadata/tibiadata-helm-charts
