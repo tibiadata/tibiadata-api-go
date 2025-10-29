@@ -1,5 +1,31 @@
 # Changelog
 
+## [4.6.0] - 2025-10-29
+
+### Changed
+
+* chore: rewrite for pure utf-8 content handling ([#511](https://github.com/tibiadata/tibiadata-api-go/pull/511) by [tobiasehlert](https://github.com/tobiasehlert))
+* chore: refactor TibiaKillstatistics for better maintainability ([#513](https://github.com/tibiadata/tibiadata-api-go/pull/513) by [tobiasehlert](https://github.com/tobiasehlert))
+* chore: use switches instead and silent TibiaDataStringToInteger error ([#514](https://github.com/tibiadata/tibiadata-api-go/pull/514) by [tobiasehlert](https://github.com/tobiasehlert))
+* chore: use splitseq instead of split ([#515](https://github.com/tibiadata/tibiadata-api-go/pull/515) by [tobiasehlert](https://github.com/tobiasehlert))
+* deps(ci): bump actions/download-artifact from 5.0.0 to 6.0.0 ([#536](https://github.com/tibiadata/tibiadata-api-go/pull/536) by [dependabot](https://github.com/dependabot))
+* deps(ci): bump actions/upload-artifact from 4.6.2 to 5.0.0 ([#535](https://github.com/tibiadata/tibiadata-api-go/pull/535) by [dependabot](https://github.com/dependabot))
+* deps(ci): bump docker/login-action from 3.5.0 to 3.6.0 ([#520](https://github.com/tibiadata/tibiadata-api-go/pull/520) by [dependabot](https://github.com/dependabot))
+* deps(ci): bump github/codeql-action from 3.30.3 to 4.31.0 ([#516](https://github.com/tibiadata/tibiadata-api-go/pull/516), [#518](https://github.com/tibiadata/tibiadata-api-go/pull/518), [#524](https://github.com/tibiadata/tibiadata-api-go/pull/524), [#529](https://github.com/tibiadata/tibiadata-api-go/pull/529), [#533](https://github.com/tibiadata/tibiadata-api-go/pull/533), [#540](https://github.com/tibiadata/tibiadata-api-go/pull/540) by [dependabot](https://github.com/dependabot))
+* deps(ci): bump peter-evans/dockerhub-description from 4.0.2 to 5.0.0 ([#522](https://github.com/tibiadata/tibiadata-api-go/pull/522) by [dependabot](https://github.com/dependabot))
+* deps(ci): bump peter-evans/repository-dispatch from 3.0.0 to 4.0.0 ([#521](https://github.com/tibiadata/tibiadata-api-go/pull/521) by [dependabot](https://github.com/dependabot))
+* deps(ci): bump sigstore/cosign-installer from 3.10.0 to 4.0.0 ([#534](https://github.com/tibiadata/tibiadata-api-go/pull/534) by [dependabot](https://github.com/dependabot))
+* deps(ci): bump tailscale/github-action from 3.2.3 to 4.0.3 ([#517](https://github.com/tibiadata/tibiadata-api-go/pull/517), [#532](https://github.com/tibiadata/tibiadata-api-go/pull/532), [#537](https://github.com/tibiadata/tibiadata-api-go/pull/537) by [dependabot](https://github.com/dependabot))
+* deps(docker): bump alpine from 3.22.1 to 3.22.2 ([#527](https://github.com/tibiadata/tibiadata-api-go/pull/527) by [dependabot](https://github.com/dependabot))
+* deps(docker): bump golang from 1.25.1 to 1.25.3 ([#528](https://github.com/tibiadata/tibiadata-api-go/pull/528), [#539](https://github.com/tibiadata/tibiadata-api-go/pull/539) by [dependabot](https://github.com/dependabot))
+* deps(go): bump github.com/gin-contrib/gzip from 1.2.3 to 1.2.5 ([#530](https://github.com/tibiadata/tibiadata-api-go/pull/530), [#538](https://github.com/tibiadata/tibiadata-api-go/pull/538) by [dependabot](https://github.com/dependabot))
+* deps(go): bump github.com/quic-go/quic-go from 0.54.0 to 0.54.1 ([#526](https://github.com/tibiadata/tibiadata-api-go/pull/526) by [dependabot](https://github.com/dependabot))
+* deps(go): bump golang.org/x/text from 0.29.0 to 0.30.0 ([#525](https://github.com/tibiadata/tibiadata-api-go/pull/525) by [dependabot](https://github.com/dependabot))
+
+### Fixed
+
+* fix(ci): specify slug for codecov ([#519](https://github.com/tibiadata/tibiadata-api-go/pull/519) by [tobiasehlert](https://github.com/tobiasehlert))
+
 ## [4.5.0] - 2025-09-22
 
 ### Changed
@@ -652,6 +678,7 @@ Head over to [tibiadata.com](https://tibiadata.com/2022/03/tibiadata-api-v3-rele
 
 Initial commit
 
+[4.6.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.5.0...v4.6.0
 [4.5.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.4.0...v4.5.0
 [4.4.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.3.6...v4.4.0
 [4.3.6]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.3.5...v4.3.6
