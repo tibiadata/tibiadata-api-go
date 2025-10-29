@@ -21,7 +21,7 @@ jobs:
 
       - name: Connect to Tailnet
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: tailscale/github-action@aa604318b61e5b25107287e0d07db6a08b3e72c0 #v4.0.2
+        uses: tailscale/github-action@3a217367cadc62d7600a77470ffe542e2313e6b9 #v4.0.3
         with:
           args: --accept-dns=true
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
