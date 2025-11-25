@@ -9,7 +9,7 @@ replace github.com/tibiadata/tibiadata-api-go/src/static => ./src/static
 replace github.com/tibiadata/tibiadata-api-go/src/validation => ./src/validation
 
 require (
-	github.com/PuerkitoBio/goquery v1.10.3
+	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/gin-contrib/gzip v1.2.5
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-resty/resty/v2 v2.16.5
