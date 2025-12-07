@@ -499,7 +499,7 @@ func tibiaGuildsOverview(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        world    path string true "The world" default(all) extensions(x-example=Antica)
-// @Param        category path string true "The category" default(experience) Enums(achievements, axefighting, charmpoints, clubfighting, distancefighting, experience, fishing, fistfighting, goshnarstaint, loyaltypoints, magiclevel, shielding, swordfighting, dromescore, bosspoints) extensions(x-example=fishing)
+// @Param        category path string true "The category" default(experience) Enums(achievements, axefighting, charmpoints, clubfighting, distancefighting, experience, fishing, fistfighting, goshnarstaint, loyaltypoints, magiclevel, shielding, swordfighting, dromescore, bosspoints, bountypoints, weeklytasks) extensions(x-example=fishing)
 // @Param        vocation path string true "The vocation" default(all) Enums(all, knights, paladins, sorcerers, druids, monks) extensions(x-example=all)
 // @Param        page     path int    true "The current page" default(1) minimum(1) extensions(x-example=1)
 // @Success      200  {object}  HighscoresResponse

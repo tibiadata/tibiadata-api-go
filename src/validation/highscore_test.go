@@ -125,6 +125,14 @@ func TestHighscoreCategoryFromString(t *testing.T) {
 			inputs:   []string{"boss", "bosses", "bosspoints"},
 			expected: HighScoreBosspoints,
 		},
+		"Bountypoints": {
+			inputs:   []string{"bountypoints", "bountypoint", "bountypointsearned"},
+			expected: HighscoreBountypoints,
+		},
+		"Weeklytasks": {
+			inputs:   []string{"weeklytasks", "weeklytask", "weeklytaskscompleted"},
+			expected: HighscoreWeeklytasks,
+		},
 	}
 
 	for category, data := range categoryTests {
