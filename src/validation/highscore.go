@@ -45,8 +45,8 @@ const (
 )
 
 func (hc HighscoreCategory) String() (string, error) {
-	seasons := [...]string{"achievements", "axefighting", "charmpoints", "clubfighting", "distancefighting", "experience", "fishing", "fistfighting", "goshnarstaint", "loyaltypoints", "magiclevel", "shielding", "swordfighting", "dromescore", "bosspoints"}
-	if hc < HighScoreAchievements || hc > HighScoreBosspoints {
+	seasons := [...]string{"achievements", "axefighting", "charmpoints", "clubfighting", "distancefighting", "experience", "fishing", "fistfighting", "goshnarstaint", "loyaltypoints", "magiclevel", "shielding", "swordfighting", "dromescore", "bosspoints", "bountypoints", "weeklytasks"}
+	if hc < HighScoreAchievements || hc > HighScoreWeeklytasks {
 		return "", errors.New("invalid HighscoreCategory value")
 	}
 	return seasons[hc-1], nil
