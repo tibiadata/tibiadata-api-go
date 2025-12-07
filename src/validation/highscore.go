@@ -7,7 +7,7 @@ import (
 
 var (
 	// validHighscoreCatregories stores all valid highscore categories
-	validHighscoreCategories = []string{"achievements", "achievement", "axe", "axefighting", "charm", "charms", "charmpoints", "charmspoints", "club", "clubfighting", "distance", "distancefighting", "fishing", "fist", "fistfighting", "goshnar", "goshnars", "goshnarstaint", "loyalty", "loyaltypoints", "magic", "mlvl", "magiclevel", "shielding", "shield", "sword", "swordfighting", "drome", "dromescore", "experience", "boss", "bosses", "bosspoints"}
+	validHighscoreCategories = []string{"achievements", "achievement", "axe", "axefighting", "charm", "charms", "charmpoints", "charmspoints", "club", "clubfighting", "distance", "distancefighting", "fishing", "fist", "fistfighting", "goshnar", "goshnars", "goshnarstaint", "loyalty", "loyaltypoints", "magic", "mlvl", "magiclevel", "shielding", "shield", "sword", "swordfighting", "drome", "dromescore", "experience", "boss", "bosses", "bosspoints", "bountypoints", "bountypoint", "bountypointsearned", "weeklytasks", "weeklytask", "weeklytaskscompleted"}
 )
 
 // IsHighscoreCategoryValid reports wheter the provided string represents a valid highscore category
@@ -40,11 +40,13 @@ const (
 	HighScoreSwordfighting
 	HighScoreDromescore
 	HighScoreBosspoints
+	HighScoreBountypoints
+	HighScoreWeeklytasks
 )
 
 func (hc HighscoreCategory) String() (string, error) {
-	seasons := [...]string{"achievements", "axefighting", "charmpoints", "clubfighting", "distancefighting", "experience", "fishing", "fistfighting", "goshnarstaint", "loyaltypoints", "magiclevel", "shielding", "swordfighting", "dromescore", "bosspoints"}
-	if hc < HighScoreAchievements || hc > HighScoreBosspoints {
+	seasons := [...]string{"achievements", "axefighting", "charmpoints", "clubfighting", "distancefighting", "experience", "fishing", "fistfighting", "goshnarstaint", "loyaltypoints", "magiclevel", "shielding", "swordfighting", "dromescore", "bosspoints", "bountypoints", "weeklytasks"}
+	if hc < HighScoreAchievements || hc > HighScoreWeeklytasks {
 		return "", errors.New("invalid HighscoreCategory value")
 	}
 	return seasons[hc-1], nil
@@ -82,6 +84,10 @@ func HighscoreCategoryFromString(input string) HighscoreCategory {
 		return HighScoreDromescore
 	case "boss", "bosses", "bosspoints":
 		return HighScoreBosspoints
+	case "bountypoints", "bountypoint", "bountypointsearned":
+		return HighScoreBountypoints
+	case "weeklytasks", "weeklytask", "weeklytaskscompleted":
+		return HighScoreWeeklytasks
 	default:
 		return HighScoreExperience
 	}

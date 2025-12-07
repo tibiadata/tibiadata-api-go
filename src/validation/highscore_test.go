@@ -49,6 +49,26 @@ func TestHighscoreCategoryBosspointsString(t *testing.T) {
 	assert.Equal(HighscoreCategory(15), highscoreCategory)
 }
 
+func TestHighscoreCategoryBountypointsString(t *testing.T) {
+	assert := assert.New(t)
+	highscoreCategory := HighScoreBountypoints
+	stringValue, err := highscoreCategory.String()
+
+	assert.Nil(err)
+	assert.Equal("bountypoints", stringValue)
+	assert.Equal(HighscoreCategory(16), highscoreCategory)
+}
+
+func TestHighscoreCategoryWeeklytasksString(t *testing.T) {
+	assert := assert.New(t)
+	highscoreCategory := HighScoreWeeklytasks
+	stringValue, err := highscoreCategory.String()
+
+	assert.Nil(err)
+	assert.Equal("weeklytasks", stringValue)
+	assert.Equal(HighscoreCategory(17), highscoreCategory)
+}
+
 func TestHighscoreCategoryInvalidValueString(t *testing.T) {
 	assert := assert.New(t)
 
@@ -124,6 +144,14 @@ func TestHighscoreCategoryFromString(t *testing.T) {
 		"Bosspoints": {
 			inputs:   []string{"boss", "bosses", "bosspoints"},
 			expected: HighScoreBosspoints,
+		},
+		"Bountypoints": {
+			inputs:   []string{"bountypoints", "bountypoint", "bountypointsearned"},
+			expected: HighscoreBountypoints,
+		},
+		"Weeklytasks": {
+			inputs:   []string{"weeklytasks", "weeklytask", "weeklytaskscompleted"},
+			expected: HighscoreWeeklytasks,
 		},
 	}
 
