@@ -86,7 +86,7 @@ func HighscoreCategoryFromString(input string) HighscoreCategory {
 		return HighScoreBosspoints
 	case "bountypoints", "bountypoint", "bountypointsearned":
 		return HighScoreBountypoints
-	case "weeklytaskscompleted", "weeklytasks", "weeklytask":
+	case "weeklytasks", "weeklytask", "weeklytaskscompleted":
 		return HighScoreWeeklytasks
 	default:
 		return HighScoreExperience
