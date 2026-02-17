@@ -21,6 +21,13 @@ updates:
     labels:
       - dependencies
       - go
+    groups:
+      resty:
+        patterns:
+          - github.com/go-resty/resty
+      testify:
+        patterns:
+          - github.com/stretchr/testify
 
   - package-ecosystem: docker
     directory: /
