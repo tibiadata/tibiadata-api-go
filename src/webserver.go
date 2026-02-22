@@ -158,6 +158,9 @@ func runWebServer() {
 	// TibiaData API version 4 endpoints
 	v4 := router.Group("/v4")
 	{
+
+		v4.GET("/bazaar/auction/:id", tibiaBazaarAuctionV3)
+
 		// Tibia characters
 		v4.GET("/boostablebosses", tibiaBoostableBosses)
 
@@ -279,6 +282,33 @@ func tibiaBoostableBosses(c *gin.Context) {
 			return TibiaBoostableBossesOverviewImpl(BoxContentHTML, tibiadataRequest.URL)
 		},
 		"TibiaBoostableBosses")
+}
+
+// Bazaar auction godoc
+// @Summary      Show one bazaar auction
+// @Description  Show all information about one bazaar auction
+// @Tags         bazaar
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "The ID of auction"
+// @Success      200  {object}  BazaarAuctionResponse
+// @Router       /v3/bazaar/auction/{id} [get]
+func tibiaBazaarAuctionV3(c *gin.Context) {
+	// getting params from URL
+	id := c.Param("id")
+
+	tibiadataRequest := TibiaDataRequestStruct{
+		Method: resty.MethodGet,
+		URL:    "https://www.tibia.com/charactertrade/?page=details&auctionid=" + id,
+	}
+
+	tibiaDataRequestHandler(
+		c,
+		tibiadataRequest,
+		func(BoxContentHTML string) (interface{}, error) {
+			return TibiaBazaarAuctionV3Impl(BoxContentHTML, tibiadataRequest.URL)
+		},
+		"TibiaBazaarAuctionV3")
 }
 
 // Character godoc
@@ -1172,7 +1202,7 @@ func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 	c.JSON(http.StatusOK, j)
 }
 
-// TibiadataUserAgentGenerator func - creates User-Agent for requests
+// TibiaDataUserAgentGenerator func - creates User-Agent for requests
 func TibiaDataUserAgentGenerator(version int) string {
 	// setting product name
 	useragent := "TibiaData-API/v" + strconv.Itoa(version)
