@@ -82,6 +82,9 @@ func init() {
 		log.Printf("[debug] TibiaData API User-Agent: %s", TibiaDataUserAgent)
 	}
 
+	// Initialize shared HTTP client (must be after TibiaDataUserAgent is set)
+	initTibiaDataClient()
+
 	// Initiate the validator
 	err := validation.Initiate(TibiaDataUserAgent)
 	if err != nil {
