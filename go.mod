@@ -17,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tibiadata/tibiadata-api-go/src/static v0.0.0-20250818132205-2b0f4da1df36
 	github.com/tibiadata/tibiadata-api-go/src/validation v0.0.0-20250811185450-4b0728b940bf
-	golang.org/x/net v0.50.0
+	golang.org/x/net v0.51.0
 	golang.org/x/text v0.34.0
 )
 
