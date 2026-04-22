@@ -11,7 +11,7 @@ TibiaData API written in Golang and deployed in container (version v3 and above)
 
 Documentation of API endpoints can be found on [docs.tibiadata.com](https://docs.tibiadata.com).
 
-### Table of Contents
+## Table of Contents
 
 - [API versions](#api-versions)
 - [How to use](#how-to-use)
