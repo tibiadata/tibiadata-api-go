@@ -1,5 +1,42 @@
 # Changelog
 
+## [4.8.0] - 2026-04-22
+
+### Changed
+
+- chore: ignore macOS metadata file ([#627](https://github.com/tibiadata/tibiadata-api-go/pull/627) by [kamilon](https://github.com/kamilon))
+- ci: add group for resty and testify in dependabot ([#607](https://github.com/tibiadata/tibiadata-api-go/pull/607) by [tobiasehlert](https://github.com/tobiasehlert))
+- ci: allow manual codecov workflow runs ([#642](https://github.com/tibiadata/tibiadata-api-go/pull/642) by [kamilon](https://github.com/kamilon))
+- ci: revert maintainer codecov guard ([#643](https://github.com/tibiadata/tibiadata-api-go/pull/643) by [kamilon](https://github.com/kamilon))
+- ci: remove deprecated rekor-url flag from cosign verify call ([#645](https://github.com/tibiadata/tibiadata-api-go/pull/645) by [kamilon](https://github.com/kamilon))
+
+### Fixed
+
+- fix: adjust resty/v2 in groups patterns ([#608](https://github.com/tibiadata/tibiadata-api-go/pull/608) by [tobiasehlert](https://github.com/tobiasehlert))
+- deps(ci): bump actions/attest-build-provenance from 3.0.0 to 4.1.0 ([#580](https://github.com/tibiadata/tibiadata-api-go/pull/580), [#593](https://github.com/tibiadata/tibiadata-api-go/pull/593), [#616](https://github.com/tibiadata/tibiadata-api-go/pull/616) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump actions/checkout from 6.0.1 to 6.0.2 ([#589](https://github.com/tibiadata/tibiadata-api-go/pull/589) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump actions/download-artifact from 7.0.0 to 8.0.1 ([#615](https://github.com/tibiadata/tibiadata-api-go/pull/615), [#634](https://github.com/tibiadata/tibiadata-api-go/pull/634) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump actions/setup-go from 6.1.0 to 6.4.0 ([#586](https://github.com/tibiadata/tibiadata-api-go/pull/586), [#613](https://github.com/tibiadata/tibiadata-api-go/pull/613), [#633](https://github.com/tibiadata/tibiadata-api-go/pull/633) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump actions/upload-artifact from 6.0.0 to 7.0.0 ([#617](https://github.com/tibiadata/tibiadata-api-go/pull/617) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump codecov/codecov-action from 5.5.2 to 6.0.0 ([#637](https://github.com/tibiadata/tibiadata-api-go/pull/637) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/build-push-action from 6.18.0 to 7.1.0 ([#602](https://github.com/tibiadata/tibiadata-api-go/pull/602), [#640](https://github.com/tibiadata/tibiadata-api-go/pull/640) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/login-action from 3.6.0 to 4.1.0 ([#594](https://github.com/tibiadata/tibiadata-api-go/pull/594), [#638](https://github.com/tibiadata/tibiadata-api-go/pull/638) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/metadata-action from 5.10.0 to 6.0.0 ([#639](https://github.com/tibiadata/tibiadata-api-go/pull/639) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/setup-buildx-action from 3.11.1 to 4.0.0 ([#582](https://github.com/tibiadata/tibiadata-api-go/pull/582), [#635](https://github.com/tibiadata/tibiadata-api-go/pull/635) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/setup-qemu-action from 3.7.0 to 4.0.0 ([#620](https://github.com/tibiadata/tibiadata-api-go/pull/620) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump github/codeql-action from 4.31.8 to 4.32.5 ([#579](https://github.com/tibiadata/tibiadata-api-go/pull/579), [#592](https://github.com/tibiadata/tibiadata-api-go/pull/592), [#596](https://github.com/tibiadata/tibiadata-api-go/pull/596), [#604](https://github.com/tibiadata/tibiadata-api-go/pull/604), [#610](https://github.com/tibiadata/tibiadata-api-go/pull/610), [#619](https://github.com/tibiadata/tibiadata-api-go/pull/619) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump sigstore/cosign-installer from 4.0.0 to 4.1.1 ([#632](https://github.com/tibiadata/tibiadata-api-go/pull/632) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump svenstaro/upload-release-action from 2.11.3 to 2.11.5 ([#611](https://github.com/tibiadata/tibiadata-api-go/pull/611), [#641](https://github.com/tibiadata/tibiadata-api-go/pull/641) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump tailscale/github-action from 4.1.0 to 4.1.2 ([#583](https://github.com/tibiadata/tibiadata-api-go/pull/583), [#636](https://github.com/tibiadata/tibiadata-api-go/pull/636) by [dependabot](https://github.com/dependabot))
+- deps(docker): bump alpine from 3.23.0 to 3.23.4 ([#581](https://github.com/tibiadata/tibiadata-api-go/pull/581), [#595](https://github.com/tibiadata/tibiadata-api-go/pull/595), [#631](https://github.com/tibiadata/tibiadata-api-go/pull/631) by [dependabot](https://github.com/dependabot))
+- deps(docker): bump golang from 1.25.5 to 1.26.2 ([#590](https://github.com/tibiadata/tibiadata-api-go/pull/590), [#603](https://github.com/tibiadata/tibiadata-api-go/pull/603), [#626](https://github.com/tibiadata/tibiadata-api-go/pull/626) by [dependabot](https://github.com/dependabot))
+- deps(go): bump github.com/gin-contrib/gzip from 1.2.5 to 1.2.6 ([#625](https://github.com/tibiadata/tibiadata-api-go/pull/625) by [dependabot](https://github.com/dependabot))
+- deps(go): bump github.com/gin-gonic/gin from 1.11.0 to 1.12.0 ([#618](https://github.com/tibiadata/tibiadata-api-go/pull/618) by [dependabot](https://github.com/dependabot))
+- deps(go): bump github.com/go-resty/resty/v2 from 2.17.1 to 2.17.2 ([#609](https://github.com/tibiadata/tibiadata-api-go/pull/609) by [dependabot](https://github.com/dependabot))
+- deps(go): bump github.com/PuerkitoBio/goquery from 1.11.0 to 1.12.0 ([#624](https://github.com/tibiadata/tibiadata-api-go/pull/624) by [dependabot](https://github.com/dependabot))
+- deps(go): bump golang.org/x/net from 0.48.0 to 0.52.0 ([#587](https://github.com/tibiadata/tibiadata-api-go/pull/587), [#599](https://github.com/tibiadata/tibiadata-api-go/pull/599), [#614](https://github.com/tibiadata/tibiadata-api-go/pull/614), [#623](https://github.com/tibiadata/tibiadata-api-go/pull/623) by [dependabot](https://github.com/dependabot))
+- deps(go): bump golang.org/x/text from 0.32.0 to 0.35.0 ([#584](https://github.com/tibiadata/tibiadata-api-go/pull/584), [#622](https://github.com/tibiadata/tibiadata-api-go/pull/622) by [dependabot](https://github.com/dependabot))
+
 ## [4.7.0] - 2025-12-17
 
 ### Added
@@ -711,6 +748,7 @@ Head over to [tibiadata.com](https://tibiadata.com/2022/03/tibiadata-api-v3-rele
 
 Initial commit
 
+[4.8.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.7.0...v4.8.0
 [4.7.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.6.0...v4.7.0
 [4.6.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.5.0...v4.6.0
 [4.5.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.4.0...v4.5.0
