@@ -16,6 +16,9 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+// berlinLocation is cached to avoid repeated time.LoadLocation calls per request.
+var berlinLocation, _ = time.LoadLocation("Europe/Berlin")
+
 // TibiaDataDatetime func
 func TibiaDataDatetime(date string) string {
 	//TODO: Normalization needs to happen above this layer
@@ -31,14 +34,11 @@ func TibiaDataDatetime(date string) string {
 		// The string that should be returned is the current timestamp
 		returnDate = time.Now()
 	} else {
-		// timezone use in html: CET/CEST
-		loc, _ := time.LoadLocation("Europe/Berlin")
-
 		// format used in datetime on html: Jan 02 2007, 19:20:30 CET
 		formatting := "Jan 02 2006, 15:04:05 MST"
 
 		// parsing html in time with location set in loc
-		returnDate, err = time.ParseInLocation(formatting, date, loc)
+		returnDate, err = time.ParseInLocation(formatting, date, berlinLocation)
 
 		// parsing html in tiem without loc
 		//returnDate, err = time.Parse("Jan 02 2006, 15:04:05 MST", date)
