@@ -16,13 +16,13 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
 
       - name: Setup go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 #v6.3.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c #v6.4.0
         with:
           go-version-file: go.mod
 
       - name: Connect to Tailnet
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository || contains(fromJson('["kamilon", "tobiasehlert"]'), github.actor)
-        uses: tailscale/github-action@53acf823325fe9ca47f4cdaa951f90b4b0de5bb9 #v4.1.1
+        uses: tailscale/github-action@306e68a486fd2350f2bfc3b19fcd143891a4a2d8 #v4.1.2
         with:
           args: --accept-dns=true
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
@@ -35,7 +35,7 @@ jobs:
           go test -race -coverprofile=coverage.out -covermode=atomic `go list ./... | grep -v vendor/` -v
 
       - name: Uploading coverage to Codecov
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de #v5.5.2
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 #v6.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: TibiaData/tibiadata-api-go
