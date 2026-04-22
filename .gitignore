@@ -16,3 +16,9 @@
 
 # Environment files
 .env
+
+# MacOS filesystem files
+.DS_Store
+
+# VS Code Launch file
+launch.json
