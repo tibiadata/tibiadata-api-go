@@ -7,12 +7,8 @@
 - chore: ignore macOS metadata file ([#627](https://github.com/tibiadata/tibiadata-api-go/pull/627) by [kamilon](https://github.com/kamilon))
 - ci: add group for resty and testify in dependabot ([#607](https://github.com/tibiadata/tibiadata-api-go/pull/607) by [tobiasehlert](https://github.com/tobiasehlert))
 - ci: allow manual codecov workflow runs ([#642](https://github.com/tibiadata/tibiadata-api-go/pull/642) by [kamilon](https://github.com/kamilon))
-- ci: revert maintainer codecov guard ([#643](https://github.com/tibiadata/tibiadata-api-go/pull/643) by [kamilon](https://github.com/kamilon))
 - ci: remove deprecated rekor-url flag from cosign verify call ([#645](https://github.com/tibiadata/tibiadata-api-go/pull/645) by [kamilon](https://github.com/kamilon))
-
-### Fixed
-
-- fix: adjust resty/v2 in groups patterns ([#608](https://github.com/tibiadata/tibiadata-api-go/pull/608) by [tobiasehlert](https://github.com/tobiasehlert))
+- ci: revert maintainer codecov guard ([#643](https://github.com/tibiadata/tibiadata-api-go/pull/643) by [kamilon](https://github.com/kamilon))
 - deps(ci): bump actions/attest-build-provenance from 3.0.0 to 4.1.0 ([#580](https://github.com/tibiadata/tibiadata-api-go/pull/580), [#593](https://github.com/tibiadata/tibiadata-api-go/pull/593), [#616](https://github.com/tibiadata/tibiadata-api-go/pull/616) by [dependabot](https://github.com/dependabot))
 - deps(ci): bump actions/checkout from 6.0.1 to 6.0.2 ([#589](https://github.com/tibiadata/tibiadata-api-go/pull/589) by [dependabot](https://github.com/dependabot))
 - deps(ci): bump actions/download-artifact from 7.0.0 to 8.0.1 ([#615](https://github.com/tibiadata/tibiadata-api-go/pull/615), [#634](https://github.com/tibiadata/tibiadata-api-go/pull/634) by [dependabot](https://github.com/dependabot))
@@ -36,6 +32,10 @@
 - deps(go): bump github.com/PuerkitoBio/goquery from 1.11.0 to 1.12.0 ([#624](https://github.com/tibiadata/tibiadata-api-go/pull/624) by [dependabot](https://github.com/dependabot))
 - deps(go): bump golang.org/x/net from 0.48.0 to 0.52.0 ([#587](https://github.com/tibiadata/tibiadata-api-go/pull/587), [#599](https://github.com/tibiadata/tibiadata-api-go/pull/599), [#614](https://github.com/tibiadata/tibiadata-api-go/pull/614), [#623](https://github.com/tibiadata/tibiadata-api-go/pull/623) by [dependabot](https://github.com/dependabot))
 - deps(go): bump golang.org/x/text from 0.32.0 to 0.35.0 ([#584](https://github.com/tibiadata/tibiadata-api-go/pull/584), [#622](https://github.com/tibiadata/tibiadata-api-go/pull/622) by [dependabot](https://github.com/dependabot))
+
+### Fixed
+
+- fix: adjust resty/v2 in groups patterns ([#608](https://github.com/tibiadata/tibiadata-api-go/pull/608) by [tobiasehlert](https://github.com/tobiasehlert))
 
 ## [4.7.0] - 2025-12-17
 
