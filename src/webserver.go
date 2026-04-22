@@ -28,9 +28,40 @@ var (
 	// TibiaData app resty vars
 	TibiaDataUserAgent, TibiaDataProxyDomain string
 
+	// tibiaDataClient is a shared resty client reused across all requests
+	tibiaDataClient *resty.Client
+
 	// ErrorNotFound will be returned if the requests ends up in a 404
 	ErrorNotFound = errors.New("page not found")
 )
+
+// initTibiaDataClient creates the shared resty client with static configuration.
+// Must be called after TibiaDataUserAgent is set.
+func initTibiaDataClient() {
+	tibiaDataClient = resty.New()
+
+	// Set Debug if enabled by TibiaDataDebug var
+	if TibiaDataDebug {
+		tibiaDataClient.SetDebug(true)
+		tibiaDataClient.EnableTrace()
+	}
+
+	// Set client timeout and retry
+	tibiaDataClient.SetTimeout(5 * time.Second)
+	tibiaDataClient.SetRetryCount(2)
+
+	// Set headers for all requests
+	tibiaDataClient.SetHeaders(map[string]string{
+		"Content-Type": "application/json",
+		"User-Agent":   TibiaDataUserAgent,
+	})
+
+	// Enabling Content length value for all request
+	tibiaDataClient.SetContentLength(true)
+
+	// Disable redirection of client (so we skip parsing maintenance page)
+	tibiaDataClient.SetRedirectPolicy(resty.NoRedirectPolicy())
+}
 
 // DebugOutInformation wraps OutInformation with some debug info
 type DebugOutInformation struct {
@@ -1197,31 +1228,6 @@ func TibiaDataUserAgentGenerator(version int) string {
 
 // TibiaDataHTMLDataCollector func
 func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string, error) {
-	// Setting up resty client
-	client := resty.New()
-
-	// Set Debug if enabled by TibiaDataDebug var
-	if TibiaDataDebug {
-		client.SetDebug(true)
-		client.EnableTrace()
-	}
-
-	// Set client timeout  and retry
-	client.SetTimeout(5 * time.Second)
-	client.SetRetryCount(2)
-
-	// Set headers for all requests
-	client.SetHeaders(map[string]string{
-		"Content-Type": "application/json",
-		"User-Agent":   TibiaDataUserAgent,
-	})
-
-	// Enabling Content length value for all request
-	client.SetContentLength(true)
-
-	// Disable redirection of client (so we skip parsing maintenance page)
-	client.SetRedirectPolicy(resty.NoRedirectPolicy())
-
 	// Replace domain with proxy if env TIBIADATA_PROXY set
 	if TibiaDataProxyDomain != "" {
 		TibiaDataRequest.URL = strings.ReplaceAll(TibiaDataRequest.URL, "https://www.tibia.com/", TibiaDataProxyDomain)
@@ -1236,11 +1242,11 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 
 	switch TibiaDataRequest.Method {
 	case resty.MethodPost:
-		res, err = client.R().
+		res, err = tibiaDataClient.R().
 			SetFormData(TibiaDataRequest.FormData).
 			Post(TibiaDataRequest.URL)
 	default:
-		res, err = client.R().Get(TibiaDataRequest.URL)
+		res, err = tibiaDataClient.R().Get(TibiaDataRequest.URL)
 	}
 
 	if TibiaDataDebug {
