@@ -7,6 +7,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/projectbarks/cimap"
 	"github.com/tibiadata/tibiadata-api-go/src/tibiamapping"
 )
 
@@ -44,6 +45,12 @@ var (
 	locker    = sync.RWMutex{} // locker is a locker to prevent InitiateValidator to be accessed concurrently
 	sha256sum string           // sha256sum stores the sha256sum of the data.min.json file
 	sha512sum string           // sha512sum stores the sha512sum of the data.min.json file
+
+	// Lookup maps for O(1) case-insensitive searches
+	creatureLookup *cimap.CaseInsensitiveMap[string] // endpoint/name/plural_name -> endpoint
+	spellLookup    *cimap.CaseInsensitiveMap[string] // endpoint/name/formula -> endpoint
+	worldLookup    *cimap.CaseInsensitiveMap[bool]   // world name -> true
+	townLookup     *cimap.CaseInsensitiveMap[bool]   // town name -> true
 
 	smallestCreatureName, biggestCreatureName, smallestCreatureWord, biggestCreatureWord                                           string // smallest and biggest creature names and words
 	smallestCreatureNameRuneCount, biggestCreatureNameRuneCount, smallestCreatureWordRuneCount, biggestCreatureWordRuneCount       int    // smallest and biggest creature names and words rune count
@@ -107,6 +114,39 @@ func Initiate(TibiaDataUserAgent string) error {
 func setVars() {
 	setCreaturesVars()
 	setSpellsVars()
+	buildLookupMaps()
+}
+
+// buildLookupMaps builds O(1) lookup maps from the slices.
+// Called once during Initiate().
+func buildLookupMaps() {
+	creatureLookup = cimap.New[string](len(val.Creatures) * 3)
+	for _, c := range val.Creatures {
+		creatureLookup.Add(c.Endpoint, c.Endpoint)
+		creatureLookup.Add(c.Name, c.Endpoint)
+		if c.PluralName != "" {
+			creatureLookup.Add(c.PluralName, c.Endpoint)
+		}
+	}
+
+	spellLookup = cimap.New[string](len(val.Spells) * 3)
+	for _, s := range val.Spells {
+		spellLookup.Add(s.Endpoint, s.Endpoint)
+		spellLookup.Add(s.Name, s.Endpoint)
+		if s.Formula != "" {
+			spellLookup.Add(s.Formula, s.Endpoint)
+		}
+	}
+
+	worldLookup = cimap.New[bool](len(val.Worlds))
+	for _, w := range val.Worlds {
+		worldLookup.Add(w, true)
+	}
+
+	townLookup = cimap.New[bool](len(val.Towns))
+	for _, t := range val.Towns {
+		townLookup.Add(t, true)
+	}
 }
 
 // setCreaturesVars sets creatures vars

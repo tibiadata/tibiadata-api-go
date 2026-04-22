@@ -5,6 +5,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/projectbarks/cimap"
 )
 
 const (
@@ -24,7 +26,13 @@ var (
 	guildNameRegex = regexp.MustCompile(`[^\sa-zA-Z]`)
 
 	// validVocations stores all valid tibia vocations
-	validVocations = []string{"none", "knight", "knights", "paladin", "paladins", "sorcerer", "sorcerers", "druid", "druids", "monk", "monks", "all"}
+	validVocations = func() *cimap.CaseInsensitiveMap[bool] {
+		m := cimap.New[bool](12)
+		for _, v := range []string{"none", "knight", "knights", "paladin", "paladins", "sorcerer", "sorcerers", "druid", "druids", "monk", "monks", "all"} {
+			m.Add(v, true)
+		}
+		return m
+	}()
 )
 
 // IsRestrictionMode reports whether the restriction mode is enabled
@@ -51,10 +59,8 @@ func IsNewsIDValid(ID int) error {
 // IsVocationValid reports wheter the provided string represents a valid vocation
 // Check if error == nil to see whether the vocation is valid or not
 func IsVocationValid(vocation string) error {
-	for _, voc := range validVocations {
-		if strings.EqualFold(vocation, voc) {
-			return nil
-		}
+	if _, ok := validVocations.Get(vocation); ok {
+		return nil
 	}
 
 	return ErrorVocationDoesNotExist
@@ -196,25 +202,12 @@ func IsCreatureNameValid(name string) (string, error) {
 		return "", ErrorCreatureNameInvalid
 	}
 
-	var (
-		found    bool
-		endpoint string
-	)
-
 	// Check if creature exists
-	for _, creature := range val.Creatures {
-		if strings.EqualFold(name, creature.Endpoint) || strings.EqualFold(name, creature.Name) || strings.EqualFold(name, creature.PluralName) {
-			found = true
-			endpoint = creature.Endpoint
-			break
-		}
+	if endpoint, ok := creatureLookup.Get(name); ok {
+		return endpoint, nil
 	}
 
-	if !found {
-		return "", ErrorCreatureNotFound
-	}
-
-	return endpoint, nil
+	return "", ErrorCreatureNotFound
 }
 
 // IsSpellNameOrFormulaValid reports wheter the provided string represents a valid spell name or formula
@@ -263,25 +256,12 @@ func IsSpellNameOrFormulaValid(name string) (string, error) {
 		return "", ErrorSpellNameInvalid
 	}
 
-	var (
-		found    bool
-		endpoint string
-	)
-
 	// Check if spell exists
-	for _, spell := range val.Spells {
-		if strings.EqualFold(name, spell.Endpoint) || strings.EqualFold(name, spell.Name) || strings.EqualFold(name, spell.Formula) {
-			found = true
-			endpoint = spell.Endpoint
-			break
-		}
+	if endpoint, ok := spellLookup.Get(name); ok {
+		return endpoint, nil
 	}
 
-	if !found {
-		return "", ErrorSpellNotFound
-	}
-
-	return endpoint, nil
+	return "", ErrorSpellNotFound
 }
 
 // GetWorlds returns a list of all existing worlds
@@ -303,13 +283,8 @@ func WorldExists(world string) (bool, error) {
 	}
 
 	// Try to find the world
-	for _, w := range val.Worlds {
-		if strings.EqualFold(w, world) {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	_, found := worldLookup.Get(world)
+	return found, nil
 }
 
 // GetTowns returns a list of all existing towns
@@ -334,13 +309,8 @@ func TownExists(town string) (bool, error) {
 	town = strings.ReplaceAll(town, "+", " ")
 
 	// Try to find the town
-	for _, t := range val.Towns {
-		if strings.EqualFold(t, town) {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	_, found := townLookup.Get(town)
+	return found, nil
 }
 
 // GetHouses returns a slice of all houses
