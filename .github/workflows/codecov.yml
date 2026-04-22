@@ -3,6 +3,7 @@ name: codecov.io
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -20,7 +21,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Connect to Tailnet
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository || contains(fromJson('["kamilon", "tobiasehlert"]'), github.actor)
         uses: tailscale/github-action@53acf823325fe9ca47f4cdaa951f90b4b0de5bb9 #v4.1.1
         with:
           args: --accept-dns=true
