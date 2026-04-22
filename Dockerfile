@@ -1,5 +1,5 @@
 # get golang container
-FROM golang:1.26.0 AS builder
+FROM golang:1.26.2 AS builder
 
 # get args
 ARG TibiaDataBuildBuilder=dockerfile
@@ -24,7 +24,7 @@ RUN go mod download && \
 
 
 # get alpine container
-FROM alpine:3.23.3 AS app
+FROM alpine:3.23.4 AS app
 
 # create workdir
 WORKDIR /opt/app
