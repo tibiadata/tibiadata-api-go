@@ -3,20 +3,26 @@ package validation
 import (
 	"errors"
 	"strings"
+
+	"github.com/projectbarks/cimap"
 )
 
 var (
-	// validHighscoreCatregories stores all valid highscore categories
-	validHighscoreCategories = []string{"achievements", "achievement", "axe", "axefighting", "charm", "charms", "charmpoints", "charmspoints", "club", "clubfighting", "distance", "distancefighting", "fishing", "fist", "fistfighting", "goshnar", "goshnars", "goshnarstaint", "loyalty", "loyaltypoints", "magic", "mlvl", "magiclevel", "shielding", "shield", "sword", "swordfighting", "drome", "dromescore", "experience", "boss", "bosses", "bosspoints", "bountypoints", "bountypoint", "bountypointsearned", "weeklytasks", "weeklytask", "weeklytaskscompleted"}
+	// validHighscoreCategories stores all valid highscore categories
+	validHighscoreCategories = func() *cimap.CaseInsensitiveMap[bool] {
+		m := cimap.New[bool](38)
+		for _, v := range []string{"achievements", "achievement", "axe", "axefighting", "charm", "charms", "charmpoints", "charmspoints", "club", "clubfighting", "distance", "distancefighting", "fishing", "fist", "fistfighting", "goshnar", "goshnars", "goshnarstaint", "loyalty", "loyaltypoints", "magic", "mlvl", "magiclevel", "shielding", "shield", "sword", "swordfighting", "drome", "dromescore", "experience", "boss", "bosses", "bosspoints", "bountypoints", "bountypoint", "bountypointsearned", "weeklytasks", "weeklytask", "weeklytaskscompleted"} {
+			m.Add(v, true)
+		}
+		return m
+	}()
 )
 
 // IsHighscoreCategoryValid reports wheter the provided string represents a valid highscore category
 // Check if error == nil to see whether the highscore category is valid or not
 func IsHighscoreCategoryValid(hs string) error {
-	for _, highscore := range validHighscoreCategories {
-		if strings.EqualFold(hs, highscore) {
-			return nil
-		}
+	if _, ok := validHighscoreCategories.Get(hs); ok {
+		return nil
 	}
 
 	return ErrorHighscoreCategoryDoesNotExist
