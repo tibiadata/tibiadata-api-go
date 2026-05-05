@@ -130,7 +130,8 @@ func TibiaDataStringToInteger(data string) int {
 	returnData, err := strconv.Atoi(str)
 	if err != nil {
 		if TibiaDataDebug {
-			log.Printf("[warning] TibiaDataStringToInteger: failed to parse '%s' as integer - returning 0", data)
+			sanitized := strings.ReplaceAll(strings.ReplaceAll(data, "\n", "_"), "\r", "_")
+			log.Printf("[warning] TibiaDataStringToInteger: failed to parse '%s' as integer - returning 0", sanitized)
 		}
 		return 0
 	}
