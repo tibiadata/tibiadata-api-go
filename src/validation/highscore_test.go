@@ -147,11 +147,11 @@ func TestHighscoreCategoryFromString(t *testing.T) {
 		},
 		"Bountypoints": {
 			inputs:   []string{"bountypoints", "bountypoint", "bountypointsearned"},
-			expected: HighscoreBountypoints,
+			expected: HighScoreBountypoints,
 		},
 		"Weeklytasks": {
 			inputs:   []string{"weeklytasks", "weeklytask", "weeklytaskscompleted"},
-			expected: HighscoreWeeklytasks,
+			expected: HighScoreWeeklytasks,
 		},
 	}
 
