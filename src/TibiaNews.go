@@ -27,7 +27,17 @@ type NewsResponse struct {
 	Information Information `json:"information"`
 }
 
-var martelRegex = regexp.MustCompile(`<img src=\"https:\/\/static\.tibia\.com\/images\/global\/letters\/letter_martel_(.)\.gif\" ([^\/>]+..)`)
+var (
+	martelRegex                      = regexp.MustCompile(`<img src=\"https:\/\/static\.tibia\.com\/images\/global\/letters\/letter_martel_(.)\.gif\" ([^\/>]+..)`)
+	newsTickerAnchorRelFirstRegex    = regexp.MustCompile(`<a href="([^"]+)" rel="noopener noreferrer" target="_blank">`)
+	newsTickerAnchorTargetFirstRegex = regexp.MustCompile(`<a href="([^"]+)" target="_blank" rel="noopener noreferrer">`)
+)
+
+func normalizeTickerContentHTML(contentHTML string) string {
+	contentHTML = newsTickerAnchorRelFirstRegex.ReplaceAllString(contentHTML, `<a href="$1" target="_blank" rel="noopener noreferrer" rel="noopener">`)
+	contentHTML = newsTickerAnchorTargetFirstRegex.ReplaceAllString(contentHTML, `<a href="$1" target="_blank" rel="noopener noreferrer" rel="noopener">`)
+	return contentHTML
+}
 
 func TibiaNewsImpl(NewsID int, rawUrl string, BoxContentHTML string) (NewsResponse, error) {
 	// Declaring vars for later use..
@@ -93,6 +103,7 @@ func TibiaNewsImpl(NewsID int, rawUrl string, BoxContentHTML string) (NewsRespon
 					insideError = fmt.Errorf("[error] TibiaNewsImpl failed at NewsData.ContentHTML, err = s.Html(), err: %s", err)
 					return false
 				}
+				NewsData.ContentHTML = normalizeTickerContentHTML(NewsData.ContentHTML)
 			} else {
 				NewsData.Content = tmp1.Text()
 				NewsData.ContentHTML, err = tmp1.Html()
@@ -100,6 +111,7 @@ func TibiaNewsImpl(NewsID int, rawUrl string, BoxContentHTML string) (NewsRespon
 					insideError = fmt.Errorf("[error] TibiaNewsImpl failed at NewsData.ContentHTML, err = tmp1.Html(), err: %s", err)
 					return false
 				}
+				NewsData.ContentHTML = normalizeTickerContentHTML(NewsData.ContentHTML)
 			}
 		} else {
 			// getting html
