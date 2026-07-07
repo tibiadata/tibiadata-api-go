@@ -147,11 +147,6 @@ func TibiaGuildsGuildImpl(guild string, BoxContentHTML string, url string) (Guil
 		if GuildDescriptionFinished || strings.HasPrefix(line, guildFoundedPrefix) || TibiaGuildIsInformationLine(line) {
 			// The rest of the Guild information
 
-			if strings.HasPrefix(GuildDescription, guildFoundedPrefix) {
-				GuildDescription = ""
-				GuildDescriptionFinished = true
-			}
-
 			if strings.HasPrefix(line, guildFoundedPrefix) {
 				// Regex to get GuildWorld and GuildFounded
 				subma1b := GuildWorldAndFoundationRegex.FindAllStringSubmatch(line, -1)
