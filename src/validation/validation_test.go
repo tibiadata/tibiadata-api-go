@@ -313,6 +313,7 @@ func TestGuildValidator(t *testing.T) {
 		"Hill",
 		"Re Evolution",
 		"On Top",
+		"ab",
 	}
 
 	for _, n := range names {
@@ -328,7 +329,6 @@ func TestGuildValidator(t *testing.T) {
 		"A",
 		"a",
 		"T2wo",
-		"ab",
 		"abc'def",
 	}
 
@@ -341,7 +341,7 @@ func TestGuildValidator(t *testing.T) {
 
 	jsonErrorNames := map[Error]string{
 		ErrorGuildNameEmpty:            "",
-		ErrorGuildNameTooSmall:         "ob",
+		ErrorGuildNameTooSmall:         "a",
 		ErrorGuildNameTooBig:           "abcabcabcabcabcabcabcabcabcabc",
 		ErrorGuildWordTooBig:           "abcabcabcabcabc hello",
 		ErrorGuildNameIsOnlyWhiteSpace: "     ",
@@ -851,7 +851,7 @@ func TestFake(t *testing.T) {
 	assert.Equal(1, MinRunesAllowedInACharacterNameWord)
 
 	assert.Equal(29, MaxRunesAllowedInAGuildName)
-	assert.Equal(3, MinRunesAllowedInAGuildName)
+	assert.Equal(2, MinRunesAllowedInAGuildName)
 	assert.Equal(14, MaxRunesAllowedInAGuildNameWord)
 	assert.Equal(2, MinRunesAllowedInAGuildNameWord)
 

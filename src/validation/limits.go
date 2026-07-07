@@ -7,7 +7,7 @@ const (
 	MinRunesAllowedInACharacterNameWord = 1  // Smallest character name word length possible
 
 	MaxRunesAllowedInAGuildName     = 29 // Larggest guild name length possible
-	MinRunesAllowedInAGuildName     = 3  // Smallest guild name length possible
+	MinRunesAllowedInAGuildName     = 2  // Smallest guild name length possible
 	MaxRunesAllowedInAGuildNameWord = 14 // Larggest guild name word length possible
 	MinRunesAllowedInAGuildNameWord = 2  // Smallest character name word length possible
 
