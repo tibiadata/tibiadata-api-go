@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -71,7 +72,7 @@ type GuildResponse struct {
 var (
 	GuildLogoRegex                     = regexp.MustCompile(`.*img src="(.*)" width=.*`)
 	GuildWorldAndFoundationRegex       = regexp.MustCompile(`^The guild was founded on (.*) on (.*).<br/>`)
-	GuildHomepageRegex                 = regexp.MustCompile(`<a href="([^"]+)"[^>]*target`)
+	GuildHomepageRegex                 = regexp.MustCompile(`(?i)<a href="([^"]+)"[^>]*>`)
 	GuildhallRegex                     = regexp.MustCompile(` is (.*). The rent is paid until (.*).<br/>`)
 	GuildDisbaneRegex                  = regexp.MustCompile(`<b>It will be disbanded on (.*.[0-9]+.[0-9]+) (.*)\.<\/b>.*`)
 	GuildMemberInformationRegex        = regexp.MustCompile(`<td>(.*)<\/td><td><a.*">(.*)<\/a>(.*)<\/td><td>(.*)<\/td><td>([0-9]+)<\/td><td>(.*)<\/td><td class.*class.*">(.*)<\/span><\/td>`)
@@ -167,18 +168,21 @@ func TibiaGuildsGuildImpl(guild string, BoxContentHTML string, url string) (Guil
 
 			if strings.HasPrefix(line, "The official homepage is") {
 				subma1c := GuildHomepageRegex.FindAllStringSubmatch(line, -1)
-				GuildHomepage = subma1c[0][1]
+				if len(subma1c) > 0 {
+					GuildHomepage = TibiaGuildResolveHomepageURL(subma1c[0][1])
+				}
 			}
 
 			// If guildhall
 			if strings.HasPrefix(line, "Their home on "+GuildWorld) {
 				subma1b := GuildhallRegex.FindAllStringSubmatch(line, -1)
-
-				GuildGuildhallData = append(GuildGuildhallData, Guildhall{
-					Name:      TibiaDataSanitizeEscapedString(subma1b[0][1]),
-					World:     GuildWorld,
-					PaidUntil: TibiaDataDate(subma1b[0][2]),
-				})
+				if len(subma1b) > 0 {
+					GuildGuildhallData = append(GuildGuildhallData, Guildhall{
+						Name:      TibiaDataSanitizeEscapedString(subma1b[0][1]),
+						World:     GuildWorld,
+						PaidUntil: TibiaDataDate(subma1b[0][2]),
+					})
+				}
 			}
 
 			// If disbanded
@@ -288,4 +292,22 @@ func TibiaGuildsGuildImpl(guild string, BoxContentHTML string, url string) (Guil
 			},
 		},
 	}, nil
+}
+
+func TibiaGuildResolveHomepageURL(homepage string) string {
+	sanitizedHomepage := TibiaDataSanitizeEscapedString(homepage)
+
+	parsedHomepage, err := url.Parse(sanitizedHomepage)
+	if err != nil {
+		return sanitizedHomepage
+	}
+
+	if strings.EqualFold(parsedHomepage.Query().Get("action"), "externallinkwarning") {
+		targetURL := parsedHomepage.Query().Get("target")
+		if targetURL != "" {
+			return targetURL
+		}
+	}
+
+	return sanitizedHomepage
 }

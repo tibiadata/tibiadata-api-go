@@ -139,15 +139,15 @@ func TestMercenarys(t *testing.T) {
 	assert.Equal("https://static.tibia.com/images/guildlogos/Mercenarys.gif", guild.LogoURL)
 	assert.NotNil(guild.Guildhalls)
 	assert.Equal("Mercenary Tower", guild.Guildhalls[0].Name)
-	assert.Equal("2023-01-28", guild.Guildhalls[0].PaidUntil)
+	assert.Equal("2026-07-11", guild.Guildhalls[0].PaidUntil)
 	assert.Equal("Antica", guild.Guildhalls[0].World)
 	assert.True(guild.Active)
 	assert.Equal("2002-02-18", guild.Founded)
 	assert.True(guild.Applications)
 	assert.Equal("http://www.mercenarys.net", guild.Homepage)
 	assert.False(guild.InWar)
-	assert.Equal("2023-02-07", guild.DisbandedDate)
-	assert.Equal("if there are still less than four vice leaders or an insufficient amount of premium accounts in the leading ranks by then", guild.DisbandedCondition)
+	assert.Empty(guild.DisbandedDate)
+	assert.Empty(guild.DisbandedCondition)
 
 	information := mercenarysJson.Information
 	assert.Equal("https://www.tibia.com/community/?subtopic=guilds&page=view&GuildName=Mercenarys", information.TibiaURLs[0])
@@ -248,4 +248,47 @@ func TestTruePlayers(t *testing.T) {
 	assert.Equal("Shine", guildViceleader.Rank)
 	assert.Equal("Elder Druid", guildViceleader.Vocation)
 	assert.Equal(81, guildViceleader.Level)
+}
+
+func TestSempiternal(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/guilds/guild/Sempiternal.html")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("File reading error: %s", err)
+	}
+
+	sempiternalJSON, err := TibiaGuildsGuildImpl("Sempiternal", string(data), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	guild := sempiternalJSON.Guild
+
+	assert.Equal("Sempiternal", guild.Name)
+	assert.Equal("Kalibra", guild.World)
+	assert.Equal("https://static.tibia.com/images/guildlogos/Sempiternal.gif", guild.LogoURL)
+	assert.True(guild.Active)
+	assert.Equal("2026-01-29", guild.Founded)
+	assert.True(guild.Applications)
+	assert.Empty(guild.Homepage)
+	assert.Equal("2026-07-21", guild.DisbandedDate)
+	assert.Equal("if there are still less than four vice leaders or an insufficient amount of premium accounts in the leading ranks by then", guild.DisbandedCondition)
+	assert.Greater(guild.MembersTotal, 0)
+	assert.GreaterOrEqual(guild.PlayersOnline, 1)
+	assert.Equal(guild.MembersTotal, len(guild.Members))
+	assert.Equal(0, guild.MembersInvited)
+	assert.Empty(guild.Invited)
+
+	guildLeader := guild.Members[0]
+	assert.Equal("Mox Ville", guildLeader.Name)
+	assert.Equal("Immortal", guildLeader.Rank)
+	assert.Equal("Elite Knight", guildLeader.Vocation)
+	assert.Equal(1265, guildLeader.Level)
+	assert.Equal("2026-06-07", guildLeader.Joined)
 }
