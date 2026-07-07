@@ -55,7 +55,7 @@ type FansitesResponse struct {
 }
 
 var (
-	FansiteInformationRegex = regexp.MustCompile(`<td><a href="(.*?)" (?:.*?\s)?target.*img .*src="(.*?)" alt="(.*?)"\/><\/a>.*<a href=".*?">(.*?)<\/a><\/td><td.*?top;">(.*?)<\/td><td.*?top;">(.*?)<\/td><td.*?top;">(.*?)<\/td><td.*?<ul><li>(.*?)<\/li><\/ul><\/td><td.*?top;">(.*?)<\/td>`)
+	FansiteInformationRegex = regexp.MustCompile(`<td><a href="([^"]+)"[^>]*target[^>]*>.*img .*src="([^"]+)" alt="([^"]+)"/></a>.*<a href="[^"]+">([^<]+)</a></td><td[^>]*top;">(.*)</td><td[^>]*top;">(.*)</td><td[^>]*top;">(.*)</td><td.*<ul><li>(.*)</li></ul></td><td[^>]*top;">(.*)</td>`)
 	FansiteImgTagRegex      = regexp.MustCompile(`<img[^>]+\bsrc="([^"]+)"`)
 	FansiteLanguagesRegex   = regexp.MustCompile(`id="Language_([a-z]{2})`)
 	FansiteAnchorRegex      = regexp.MustCompile(`.*src="(.*)" alt=".*`)
