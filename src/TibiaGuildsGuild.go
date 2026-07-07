@@ -69,6 +69,8 @@ type GuildResponse struct {
 	Information Information `json:"information"`
 }
 
+const guildFoundedPrefix = "The guild was founded on "
+
 var (
 	GuildLogoRegex                     = regexp.MustCompile(`.*img src="(.*)" width=.*`)
 	GuildWorldAndFoundationRegex       = regexp.MustCompile(`^The guild was founded on (.*) on (.*).<br/>`)
@@ -126,7 +128,7 @@ func TibiaGuildsGuildImpl(guild string, BoxContentHTML string, url string) (Guil
 	for line := range strings.SplitSeq(strings.TrimSuffix(InnerTableContainerTMPB, "\n"), "\n") {
 		// Guild information
 		if !GuildDescriptionFinished {
-			if TibiaGuildIsInformationLine(line) || strings.HasPrefix(line, "The guild was founded on ") {
+			if TibiaGuildIsInformationLine(line) || strings.HasPrefix(line, guildFoundedPrefix) {
 				GuildDescription = strings.TrimSpace(TibiaDataSanitizeEscapedString(GuildDescription))
 				GuildDescriptionFinished = true
 			} else {
@@ -142,15 +144,15 @@ func TibiaGuildsGuildImpl(guild string, BoxContentHTML string, url string) (Guil
 
 		}
 
-		if GuildDescriptionFinished || strings.HasPrefix(line, "The guild was founded on ") || TibiaGuildIsInformationLine(line) {
+		if GuildDescriptionFinished || strings.HasPrefix(line, guildFoundedPrefix) || TibiaGuildIsInformationLine(line) {
 			// The rest of the Guild information
 
-			if strings.HasPrefix(GuildDescription, "The guild was founded on ") {
+			if strings.HasPrefix(GuildDescription, guildFoundedPrefix) {
 				GuildDescription = ""
 				GuildDescriptionFinished = true
 			}
 
-			if strings.HasPrefix(line, "The guild was founded on") {
+			if strings.HasPrefix(line, guildFoundedPrefix) {
 				// Regex to get GuildWorld and GuildFounded
 				subma1b := GuildWorldAndFoundationRegex.FindAllStringSubmatch(line, -1)
 				if len(subma1b) != 0 {
