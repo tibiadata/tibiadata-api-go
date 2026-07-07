@@ -71,7 +71,7 @@ type GuildResponse struct {
 var (
 	GuildLogoRegex                     = regexp.MustCompile(`.*img src="(.*)" width=.*`)
 	GuildWorldAndFoundationRegex       = regexp.MustCompile(`^The guild was founded on (.*) on (.*).<br/>`)
-	GuildHomepageRegex                 = regexp.MustCompile(`<a href="(.*)" target=.*>`)
+	GuildHomepageRegex                 = regexp.MustCompile(`<a href="([^"]+)"[^>]*target`)
 	GuildhallRegex                     = regexp.MustCompile(` is (.*). The rent is paid until (.*).<br/>`)
 	GuildDisbaneRegex                  = regexp.MustCompile(`<b>It will be disbanded on (.*.[0-9]+.[0-9]+) (.*)\.<\/b>.*`)
 	GuildMemberInformationRegex        = regexp.MustCompile(`<td>(.*)<\/td><td><a.*">(.*)<\/a>(.*)<\/td><td>(.*)<\/td><td>([0-9]+)<\/td><td>(.*)<\/td><td class.*class.*">(.*)<\/span><\/td>`)
