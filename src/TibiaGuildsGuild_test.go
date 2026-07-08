@@ -139,15 +139,15 @@ func TestMercenarys(t *testing.T) {
 	assert.Equal("https://static.tibia.com/images/guildlogos/Mercenarys.gif", guild.LogoURL)
 	assert.NotNil(guild.Guildhalls)
 	assert.Equal("Mercenary Tower", guild.Guildhalls[0].Name)
-	assert.Equal("2023-01-28", guild.Guildhalls[0].PaidUntil)
+	assert.Equal("2026-07-11", guild.Guildhalls[0].PaidUntil)
 	assert.Equal("Antica", guild.Guildhalls[0].World)
 	assert.True(guild.Active)
 	assert.Equal("2002-02-18", guild.Founded)
 	assert.True(guild.Applications)
 	assert.Equal("http://www.mercenarys.net", guild.Homepage)
 	assert.False(guild.InWar)
-	assert.Equal("2023-02-07", guild.DisbandedDate)
-	assert.Equal("if there are still less than four vice leaders or an insufficient amount of premium accounts in the leading ranks by then", guild.DisbandedCondition)
+	assert.Empty(guild.DisbandedDate)
+	assert.Empty(guild.DisbandedCondition)
 
 	information := mercenarysJson.Information
 	assert.Equal("https://www.tibia.com/community/?subtopic=guilds&page=view&GuildName=Mercenarys", information.TibiaURLs[0])
@@ -248,4 +248,129 @@ func TestTruePlayers(t *testing.T) {
 	assert.Equal("Shine", guildViceleader.Rank)
 	assert.Equal("Elder Druid", guildViceleader.Vocation)
 	assert.Equal(81, guildViceleader.Level)
+}
+
+func TestSempiternal(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/guilds/guild/Sempiternal.html")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("File reading error: %s", err)
+	}
+
+	sempiternalJSON, err := TibiaGuildsGuildImpl("Sempiternal", string(data), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	guild := sempiternalJSON.Guild
+
+	assert.Equal("Sempiternal", guild.Name)
+	assert.Equal("Kalibra", guild.World)
+	assert.Equal("https://static.tibia.com/images/guildlogos/Sempiternal.gif", guild.LogoURL)
+	assert.Empty(guild.Description)
+	assert.NotNil(guild.Guildhalls)
+	assert.Equal("Southern Thais Guildhall", guild.Guildhalls[0].Name)
+	assert.Equal("2026-07-25", guild.Guildhalls[0].PaidUntil)
+	assert.Equal("Kalibra", guild.Guildhalls[0].World)
+	assert.True(guild.Active)
+	assert.Equal("2026-01-29", guild.Founded)
+	assert.True(guild.Applications)
+	assert.Equal("https://discord.gg/8RRjUcWt", guild.Homepage)
+	assert.Equal("2026-07-21", guild.DisbandedDate)
+	assert.Equal("if there are still less than four vice leaders or an insufficient amount of premium accounts in the leading ranks by then", guild.DisbandedCondition)
+	assert.Greater(guild.MembersTotal, 0)
+	assert.GreaterOrEqual(guild.PlayersOnline, 1)
+	assert.Equal(guild.MembersTotal, len(guild.Members))
+	assert.Equal(0, guild.MembersInvited)
+	assert.Empty(guild.Invited)
+
+	guildLeader := guild.Members[0]
+	assert.Equal("Mox Ville", guildLeader.Name)
+	assert.Equal("Immortal", guildLeader.Rank)
+	assert.Equal("Elite Knight", guildLeader.Vocation)
+	assert.Equal(1265, guildLeader.Level)
+	assert.Equal("2026-06-07", guildLeader.Joined)
+}
+
+func TestTibiaGuildIsInformationLine(t *testing.T) {
+	tests := []struct {
+		name     string
+		line     string
+		expected bool
+	}{
+		{name: "open applications", line: "Guild is opened for applications.<BR>", expected: true},
+		{name: "closed during war", line: "Guild is closed for applications during war.<BR>", expected: true},
+		{name: "active status", line: "It is currently active.<BR>", expected: true},
+		{name: "homepage", line: "The official homepage is at https://discord.gg/8RRjUcWt<BR>", expected: true},
+		{name: "disband notice", line: "<b>It will be disbanded on Jul&#160;21&#160;2026 if condition.</b><BR>", expected: true},
+		{name: "guildhall", line: "Their home on Kalibra is Southern Thais Guildhall. The rent is paid until Jul&#160;25&#160;2026.<BR>", expected: true},
+		{name: "description", line: "My blood to your blood, your blood to mine.<BR><BR>", expected: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, TibiaGuildIsInformationLine(test.line))
+		})
+	}
+}
+
+func TestTibiaGuildExtractHomepage(t *testing.T) {
+	tests := []struct {
+		name     string
+		line     string
+		expected string
+	}{
+		{
+			name:     "plain text homepage",
+			line:     "The official homepage is at https://discord.gg/8RRjUcWt<BR><BR>",
+			expected: "https://discord.gg/8RRjUcWt",
+		},
+		{
+			name:     "external link warning anchor",
+			line:     `The official homepage is at <A HREF="?action=externallinkwarning&amp;target=http%3A%2F%2Fwww.mercenarys.net" TARGET="_blank" REL="noopener noreferrer" >www.mercenarys.net</A>.<BR>`,
+			expected: "http://www.mercenarys.net",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, TibiaGuildExtractHomepage(test.line))
+		})
+	}
+}
+
+func TestTibiaGuildResolveHomepageURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		homepage string
+		expected string
+	}{
+		{
+			name:     "plain url",
+			homepage: "https://discord.gg/8RRjUcWt",
+			expected: "https://discord.gg/8RRjUcWt",
+		},
+		{
+			name:     "external link warning",
+			homepage: "?action=externallinkwarning&amp;target=http%3A%2F%2Fwww.mercenarys.net",
+			expected: "http://www.mercenarys.net",
+		},
+		{
+			name:     "invalid url",
+			homepage: "://invalid url",
+			expected: "://invalid url",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, TibiaGuildResolveHomepageURL(test.homepage))
+		})
+	}
 }

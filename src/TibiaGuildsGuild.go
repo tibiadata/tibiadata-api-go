@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -68,10 +69,12 @@ type GuildResponse struct {
 	Information Information `json:"information"`
 }
 
+const guildFoundedPrefix = "The guild was founded on "
+
 var (
 	GuildLogoRegex                     = regexp.MustCompile(`.*img src="(.*)" width=.*`)
 	GuildWorldAndFoundationRegex       = regexp.MustCompile(`^The guild was founded on (.*) on (.*).<br/>`)
-	GuildHomepageRegex                 = regexp.MustCompile(`<a href="([^"]+)"[^>]*target`)
+	GuildHomepageRegex                 = regexp.MustCompile(`(?i)<a href="([^"]+)"[^>]*>`)
 	GuildhallRegex                     = regexp.MustCompile(` is (.*). The rent is paid until (.*).<br/>`)
 	GuildDisbaneRegex                  = regexp.MustCompile(`<b>It will be disbanded on (.*.[0-9]+.[0-9]+) (.*)\.<\/b>.*`)
 	GuildMemberInformationRegex        = regexp.MustCompile(`<td>(.*)<\/td><td><a.*">(.*)<\/a>(.*)<\/td><td>(.*)<\/td><td>([0-9]+)<\/td><td>(.*)<\/td><td class.*class.*">(.*)<\/span><\/td>`)
@@ -125,26 +128,26 @@ func TibiaGuildsGuildImpl(guild string, BoxContentHTML string, url string) (Guil
 	for line := range strings.SplitSeq(strings.TrimSuffix(InnerTableContainerTMPB, "\n"), "\n") {
 		// Guild information
 		if !GuildDescriptionFinished {
-			// First line is the description..
-			GuildDescription += strings.ReplaceAll(line+"\n", "<br/><br/>\n", "")
-
-			// Abort loop and continue wiht next section
-			if strings.Contains(line, "<br/><br/>") {
+			if TibiaGuildIsInformationLine(line) || strings.HasPrefix(line, guildFoundedPrefix) {
 				GuildDescription = strings.TrimSpace(TibiaDataSanitizeEscapedString(GuildDescription))
 				GuildDescriptionFinished = true
+			} else {
+				// First line is the description..
+				GuildDescription += strings.ReplaceAll(line+"\n", "<br/><br/>\n", "")
+
+				// Abort loop and continue wiht next section
+				if strings.Contains(line, "<br/><br/>") {
+					GuildDescription = strings.TrimSpace(TibiaDataSanitizeEscapedString(GuildDescription))
+					GuildDescriptionFinished = true
+				}
 			}
 
 		}
 
-		if GuildDescriptionFinished || strings.HasPrefix(line, "The guild was founded on ") {
+		if GuildDescriptionFinished || strings.HasPrefix(line, guildFoundedPrefix) || TibiaGuildIsInformationLine(line) {
 			// The rest of the Guild information
 
-			if strings.HasPrefix(GuildDescription, "The guild was founded on ") {
-				GuildDescription = ""
-				GuildDescriptionFinished = true
-			}
-
-			if strings.HasPrefix(line, "The guild was founded on") {
+			if strings.HasPrefix(line, guildFoundedPrefix) {
 				// Regex to get GuildWorld and GuildFounded
 				subma1b := GuildWorldAndFoundationRegex.FindAllStringSubmatch(line, -1)
 				if len(subma1b) != 0 {
@@ -166,19 +169,19 @@ func TibiaGuildsGuildImpl(guild string, BoxContentHTML string, url string) (Guil
 			}
 
 			if strings.HasPrefix(line, "The official homepage is") {
-				subma1c := GuildHomepageRegex.FindAllStringSubmatch(line, -1)
-				GuildHomepage = subma1c[0][1]
+				GuildHomepage = TibiaGuildExtractHomepage(line)
 			}
 
 			// If guildhall
 			if strings.HasPrefix(line, "Their home on "+GuildWorld) {
 				subma1b := GuildhallRegex.FindAllStringSubmatch(line, -1)
-
-				GuildGuildhallData = append(GuildGuildhallData, Guildhall{
-					Name:      TibiaDataSanitizeEscapedString(subma1b[0][1]),
-					World:     GuildWorld,
-					PaidUntil: TibiaDataDate(subma1b[0][2]),
-				})
+				if len(subma1b) > 0 {
+					GuildGuildhallData = append(GuildGuildhallData, Guildhall{
+						Name:      TibiaDataSanitizeEscapedString(subma1b[0][1]),
+						World:     GuildWorld,
+						PaidUntil: TibiaDataDate(subma1b[0][2]),
+					})
+				}
 			}
 
 			// If disbanded
@@ -288,4 +291,46 @@ func TibiaGuildsGuildImpl(guild string, BoxContentHTML string, url string) (Guil
 			},
 		},
 	}, nil
+}
+
+func TibiaGuildIsInformationLine(line string) bool {
+	return strings.HasPrefix(line, "Guild is opened for applications.") ||
+		strings.HasPrefix(line, "Guild is closed for applications during war.") ||
+		strings.HasPrefix(line, "It is currently active") ||
+		strings.HasPrefix(line, "The official homepage is") ||
+		strings.HasPrefix(line, "<b>It will be disbanded on ") ||
+		strings.HasPrefix(line, "Their home on ")
+}
+
+func TibiaGuildExtractHomepage(line string) string {
+	subma1c := GuildHomepageRegex.FindAllStringSubmatch(line, -1)
+	if len(subma1c) > 0 {
+		return TibiaGuildResolveHomepageURL(subma1c[0][1])
+	}
+
+	homepage := strings.TrimPrefix(line, "The official homepage is at ")
+	for _, suffix := range []string{"<br/><br/>", "<br/>", "<BR><BR>", "<BR>"} {
+		homepage = strings.TrimSuffix(homepage, suffix)
+	}
+	homepage = strings.TrimSuffix(homepage, ".")
+
+	return TibiaGuildResolveHomepageURL(strings.TrimSpace(homepage))
+}
+
+func TibiaGuildResolveHomepageURL(homepage string) string {
+	sanitizedHomepage := TibiaDataSanitizeEscapedString(homepage)
+
+	parsedHomepage, err := url.Parse(sanitizedHomepage)
+	if err != nil {
+		return sanitizedHomepage
+	}
+
+	if strings.EqualFold(parsedHomepage.Query().Get("action"), "externallinkwarning") {
+		targetURL := parsedHomepage.Query().Get("target")
+		if targetURL != "" {
+			return targetURL
+		}
+	}
+
+	return sanitizedHomepage
 }
