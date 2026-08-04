@@ -10,8 +10,8 @@ import (
 var (
 	// validHighscoreCategories stores all valid highscore categories
 	validHighscoreCategories = func() *cimap.CaseInsensitiveMap[bool] {
-		m := cimap.New[bool](38)
-		for _, v := range []string{"achievements", "achievement", "axe", "axefighting", "charm", "charms", "charmpoints", "charmspoints", "club", "clubfighting", "distance", "distancefighting", "fishing", "fist", "fistfighting", "goshnar", "goshnars", "goshnarstaint", "loyalty", "loyaltypoints", "magic", "mlvl", "magiclevel", "shielding", "shield", "sword", "swordfighting", "drome", "dromescore", "experience", "boss", "bosses", "bosspoints", "bountypoints", "bountypoint", "bountypointsearned", "weeklytasks", "weeklytask", "weeklytaskscompleted"} {
+		m := cimap.New[bool](41)
+		for _, v := range []string{"achievements", "achievement", "axe", "axefighting", "charm", "charms", "charmpoints", "charmspoints", "club", "clubfighting", "distance", "distancefighting", "fishing", "fist", "fistfighting", "goshnar", "goshnars", "goshnarstaint", "loyalty", "loyaltypoints", "magic", "mlvl", "magiclevel", "shielding", "shield", "sword", "swordfighting", "drome", "dromescore", "experience", "boss", "bosses", "bosspoints", "bountypoints", "bountypoint", "bountypointsearned", "weeklytasks", "weeklytask", "weeklytaskscompleted", "phosphorusrecord", "phosphorus", "phosphorusrecords"} {
 			m.Add(v, true)
 		}
 		return m
@@ -48,11 +48,12 @@ const (
 	HighScoreBosspoints
 	HighScoreBountypoints
 	HighScoreWeeklytasks
+	HighScorePhosphorusrecord
 )
 
 func (hc HighscoreCategory) String() (string, error) {
-	seasons := [...]string{"achievements", "axefighting", "charmpoints", "clubfighting", "distancefighting", "experience", "fishing", "fistfighting", "goshnarstaint", "loyaltypoints", "magiclevel", "shielding", "swordfighting", "dromescore", "bosspoints", "bountypoints", "weeklytasks"}
-	if hc < HighScoreAchievements || hc > HighScoreWeeklytasks {
+	seasons := [...]string{"achievements", "axefighting", "charmpoints", "clubfighting", "distancefighting", "experience", "fishing", "fistfighting", "goshnarstaint", "loyaltypoints", "magiclevel", "shielding", "swordfighting", "dromescore", "bosspoints", "bountypoints", "weeklytasks", "phosphorusrecord"}
+	if hc < HighScoreAchievements || hc > HighScorePhosphorusrecord {
 		return "", errors.New("invalid HighscoreCategory value")
 	}
 	return seasons[hc-1], nil
@@ -94,6 +95,8 @@ func HighscoreCategoryFromString(input string) HighscoreCategory {
 		return HighScoreBountypoints
 	case "weeklytasks", "weeklytask", "weeklytaskscompleted":
 		return HighScoreWeeklytasks
+	case "phosphorusrecord", "phosphorus", "phosphorusrecords":
+		return HighScorePhosphorusrecord
 	default:
 		return HighScoreExperience
 	}

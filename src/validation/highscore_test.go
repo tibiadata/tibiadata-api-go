@@ -69,6 +69,16 @@ func TestHighscoreCategoryWeeklytasksString(t *testing.T) {
 	assert.Equal(HighscoreCategory(17), highscoreCategory)
 }
 
+func TestHighscoreCategoryPhosphorusrecordString(t *testing.T) {
+	assert := assert.New(t)
+	highscoreCategory := HighScorePhosphorusrecord
+	stringValue, err := highscoreCategory.String()
+
+	assert.Nil(err)
+	assert.Equal("phosphorusrecord", stringValue)
+	assert.Equal(HighscoreCategory(18), highscoreCategory)
+}
+
 func TestHighscoreCategoryInvalidValueString(t *testing.T) {
 	assert := assert.New(t)
 
@@ -152,6 +162,10 @@ func TestHighscoreCategoryFromString(t *testing.T) {
 		"Weeklytasks": {
 			inputs:   []string{"weeklytasks", "weeklytask", "weeklytaskscompleted"},
 			expected: HighScoreWeeklytasks,
+		},
+		"Phosphorusrecord": {
+			inputs:   []string{"phosphorusrecord", "phosphorus", "phosphorusrecords"},
+			expected: HighScorePhosphorusrecord,
 		},
 	}
 
