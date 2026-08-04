@@ -9,6 +9,10 @@ updates:
     labels:
       - dependencies
       - github_actions
+    groups:
+      codeql-action:
+        patterns:
+          - github/codeql-action*
 
   - package-ecosystem: gomod
     directories:
