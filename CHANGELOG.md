@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- feat: add character trades ending endpoint with bazaar filters
+
 ## [4.9.0] - 2026-07-11
 
 ### Changed

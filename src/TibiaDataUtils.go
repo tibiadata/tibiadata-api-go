@@ -19,11 +19,28 @@ import (
 // berlinLocation is cached to avoid repeated time.LoadLocation calls per request.
 var berlinLocation, _ = time.LoadLocation("Europe/Berlin")
 
-// TibiaDataDatetime func
-func TibiaDataDatetime(date string) string {
+// TibiaDataParseDatetime func - parse tibia.com datetime strings into time.Time
+func TibiaDataParseDatetime(date string) (time.Time, error) {
 	//TODO: Normalization needs to happen above this layer
 	date = norm.NFKC.String(date)
+	date = TibiaDataSanitizeStrings(date)
 
+	// format used in datetime on html: Jan 02 2007, 19:20:30 CET
+	formatting := "Jan 02 2006, 15:04:05 MST"
+
+	// parsing html in time with location set in loc
+	returnDate, err := time.ParseInLocation(formatting, date, berlinLocation)
+	if err != nil {
+		// format used on character bazaar: Jan 02 2007, 19:20 CET
+		formattingWithoutSeconds := "Jan 02 2006, 15:04 MST"
+		returnDate, err = time.ParseInLocation(formattingWithoutSeconds, date, berlinLocation)
+	}
+
+	return returnDate, err
+}
+
+// TibiaDataDatetime func
+func TibiaDataDatetime(date string) string {
 	var (
 		returnDate time.Time
 		err        error
@@ -34,11 +51,8 @@ func TibiaDataDatetime(date string) string {
 		// The string that should be returned is the current timestamp
 		returnDate = time.Now()
 	} else {
-		// format used in datetime on html: Jan 02 2007, 19:20:30 CET
-		formatting := "Jan 02 2006, 15:04:05 MST"
-
 		// parsing html in time with location set in loc
-		returnDate, err = time.ParseInLocation(formatting, date, berlinLocation)
+		returnDate, err = TibiaDataParseDatetime(date)
 
 		// parsing html in tiem without loc
 		//returnDate, err = time.Parse("Jan 02 2006, 15:04:05 MST", date)

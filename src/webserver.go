@@ -195,6 +195,9 @@ func runWebServer() {
 		// Tibia characters
 		v4.GET("/character/:name", tibiaCharactersCharacter)
 
+		// Tibia character trades
+		v4.GET("/charactertrades/ending", tibiaCharacterTradesEnding)
+
 		// Tibia creatures
 		v4.GET("/creature/:race", tibiaCreaturesCreature)
 		v4.GET("/creatures", tibiaCreaturesOverview)
@@ -349,6 +352,47 @@ func tibiaCharactersCharacter(c *gin.Context) {
 			return TibiaCharactersCharacterImpl(BoxContentHTML, tibiadataRequest.URL)
 		},
 		"TibiaCharactersCharacter")
+}
+
+// CharacterTradesEnding godoc
+// @Summary      Character trades ending soon
+// @Description  Show current character auctions ending within the next 24 hours
+// @Description  Optional filters are passed through to tibia.com character trades.
+// @Tags         character trades
+// @Accept       json
+// @Produce      json
+// @Param        world       query string false "Filter by world" extensions(x-example=Antica)
+// @Param        pvp_type    query string false "Filter by PvP type" Enums(open, optional, hardcore, retro_open, retro_hardcore) extensions(x-example=optional)
+// @Param        battleye    query string false "Filter by BattlEye protection" Enums(initially_protected, protected, not_protected) extensions(x-example=protected)
+// @Param        vocation    query string false "Filter by vocation" Enums(all, none, druids, knights, paladins, sorcerers, monks) extensions(x-example=knights)
+// @Param        min_level   query int    false "Minimum character level" extensions(x-example=100)
+// @Param        max_level   query int    false "Maximum character level" extensions(x-example=500)
+// @Param        skill       query string false "Filter by skill" Enums(axe_fighting, club_fighting, distance_fighting, fishing, fist_fighting, magic_level, shielding, sword_fighting) extensions(x-example=magic_level)
+// @Param        min_skill   query int    false "Minimum skill level" extensions(x-example=80)
+// @Param        max_skill   query int    false "Maximum skill level" extensions(x-example=120)
+// @Param        search      query string false "Search string" extensions(x-example=Ferumbras)
+// @Param        search_type query string false "Search type" Enums(item, item_wildcard, character_name) extensions(x-example=item)
+// @Success      200  {object}  CharacterTradesResponse
+// @Failure      400  {object}  Information
+// @Failure      404  {object}  Information
+// @Failure      503  {object}  Information
+// @Router       /v4/charactertrades/ending [get]
+func tibiaCharacterTradesEnding(c *gin.Context) {
+	// getting params from URL
+	filters, err := parseCharacterTradeFilters(c)
+	if err != nil {
+		TibiaDataErrorHandler(c, err, http.StatusBadRequest)
+		return
+	}
+
+	jsonData, err := TibiaCharacterTradesEndingImpl(c, filters, TibiaDataHTMLDataCollector)
+	if err != nil {
+		TibiaDataErrorHandler(c, err, http.StatusBadGateway)
+		return
+	}
+
+	// return jsonData
+	TibiaDataAPIHandleResponse(c, "TibiaCharacterTradesEnding", jsonData)
 }
 
 // Creatures godoc

@@ -19,6 +19,10 @@ func TestTibiaUTCDateFormat(t *testing.T) {
 	assert.Equal(t, "2021-12-24T09:52:16Z", TibiaDataDatetime("Dec 24 2021, 09:52:16 UTC"))
 }
 
+func TestTibiaBazaarDateFormat(t *testing.T) {
+	assert.Equal(t, "2026-03-24T09:00:00Z", TibiaDataDatetime("Mar 24 2026, 10:00 CET"))
+}
+
 func TestIsEnvExist(t *testing.T) {
 	assert := assert.New(t)
 

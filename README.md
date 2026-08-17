@@ -136,6 +136,7 @@ Those are the current existing endpoints.
 - GET `/readyz`
 - GET `/v4/boostablebosses`
 - GET `/v4/character/:name`
+- GET `/v4/charactertrades/ending`
 - GET `/v4/creature/:race`
 - GET `/v4/creatures`
 - GET `/v4/fansites`
