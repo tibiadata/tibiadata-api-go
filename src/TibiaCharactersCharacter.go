@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -296,11 +297,14 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 				characterInfo.UnlockedTitles = fansiteData.CharacterAdminInformation.CharacterTitleCount
 				for _, a := range fansiteData.CharacterAdminInformation.DisplayedAchievements {
 					achievements = append(achievements, Achievements{
-						Name:   a.Name,
+						Name:   TibiaDataSanitizeStrings(a.Name),
 						Grade:  a.AchievementPoints,
 						Secret: a.IsSecret,
 					})
 				}
+				sort.SliceStable(achievements, func(i, j int) bool {
+					return strings.ToLower(achievements[i].Name) < strings.ToLower(achievements[j].Name)
+				})
 				for _, h := range fansiteData.CharacterAdminInformation.Houses {
 					characterInfo.Houses = append(characterInfo.Houses, Houses{
 						Name:    h.Name,
@@ -622,7 +626,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					) + nameIdx
 
 					AchievementsData = append(AchievementsData, Achievements{
-						Name:   CharacterListHTML[nameIdx:endNameIdx],
+						Name:   TibiaDataSanitizeStrings(CharacterListHTML[nameIdx:endNameIdx]),
 						Grade:  strings.Count(CharacterListHTML, "achievement-grade-symbol"),
 						Secret: strings.Contains(CharacterListHTML, "achievement-secret-symbol"),
 					})
