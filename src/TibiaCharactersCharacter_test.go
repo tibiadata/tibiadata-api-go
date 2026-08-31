@@ -2949,8 +2949,8 @@ func TestNumber6(t *testing.T) {
 	assert.Equal(characterJson.Character.Achievements[4].Secret, true)
 }
 
-func TestNumber7(t *testing.T) {
-	file, err := static.TestFiles.Open("testdata/characters/Torbjörn.html")
+func TestCharacterTorbjoern(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/characters/Torbjoern.html")
 	if err != nil {
 		t.Fatalf("file opening error: %s", err)
 	}
