@@ -84,6 +84,78 @@ func TestCharacterTrollefar(t *testing.T) {
 	}
 }
 
+func TestCharacterMightyTroll(t *testing.T) {
+	testCases := []struct {
+		name          string
+		fixture       string
+		url           string
+		expectedFirst string
+	}{
+		{
+			name:    "html",
+			fixture: "testdata/characters/Mighty troll.html",
+			url:     "https://www.tibia.com/community/?subtopic=characters&name=Mighty+troll",
+		},
+		{
+			name:    "json",
+			fixture: "testdata/characters/Mighty troll.json",
+			url:     "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Mighty%20troll",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			file, err := static.TestFiles.Open(tc.fixture)
+			if err != nil {
+				t.Fatalf("file opening error: %s", err)
+			}
+			defer file.Close()
+
+			data, err := io.ReadAll(file)
+			if err != nil {
+				t.Fatalf("File reading error: %s", err)
+			}
+
+			characterJson, err := TibiaCharactersCharacterImpl(string(data), tc.url)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assert := assert.New(t)
+			character := characterJson.Character.CharacterInfo
+
+			assert.Equal("Mighty troll", character.Name)
+			assert.Nil(character.FormerNames)
+			assert.False(character.Traded)
+			assert.Empty(character.DeletionDate)
+			assert.Equal("male", character.Sex)
+			assert.Equal("Dragondouser", character.Title)
+			assert.Equal(9, character.UnlockedTitles)
+
+			// Vocation via html remains on premium vocation, even if account status was changed
+			switch tc.name {
+			case "html":
+				assert.Equal("Elder Druid", character.Vocation)
+			case "json":
+				assert.Equal("Druid", character.Vocation)
+			}
+
+			assert.Equal(200, character.Level)
+			assert.Equal(306, character.AchievementPoints)
+			assert.Equal("Vunira", character.World)
+			assert.Nil(character.FormerWorlds)
+			assert.Equal("Thais", character.Residence)
+			assert.Equal("Trollefar", character.MarriedTo)
+			assert.Nil(character.Houses)
+			assert.Empty(character.Guild.GuildName)
+			assert.Empty(character.Guild.Rank)
+			assert.Equal("2025-12-30T21:34:57Z", character.LastLogin)
+			assert.Equal("Free Account", character.AccountStatus)
+			assert.Equal("Noone can live forever...\n\n\n\n\nOn Valoria:\n\n4th druid to lvl 100\n1st druid to 110-136 and 150\n18:33 You have found a stonecutter axe. 01.05.07 2nd mage team\n\nSenior tutor July 2006-July 2008\n\nFirst to get full assassin, norseman on Valoria\n\n\n2005: 16:49 You see a bed. Trollbollnollkoll is sleeping there. Last sight of trollbollnollkoll. R.I.P\n", character.Comment)
+		})
+	}
+}
+
 func TestNumber1(t *testing.T) {
 	file, err := static.TestFiles.Open("testdata/characters/Darkside Rafa.html")
 	if err != nil {
@@ -2950,28 +3022,49 @@ func TestNumber6(t *testing.T) {
 }
 
 func TestCharacterTorbjoern(t *testing.T) {
-	file, err := static.TestFiles.Open("testdata/characters/Torbjoern.html")
-	if err != nil {
-		t.Fatalf("file opening error: %s", err)
+	testCases := []struct {
+		name    string
+		fixture string
+		url     string
+	}{
+		{
+			name:    "html",
+			fixture: "testdata/characters/Torbjoern.html",
+			url:     "https://www.tibia.com/community/?subtopic=characters&name=Torbjörn",
+		},
+		{
+			name:    "json",
+			fixture: "testdata/characters/Torbjoern.json",
+			url:     "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Torbjörn",
+		},
 	}
-	defer file.Close()
 
-	data, err := io.ReadAll(file)
-	if err != nil {
-		t.Fatalf("File reading error: %s", err)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			file, err := static.TestFiles.Open(tc.fixture)
+			if err != nil {
+				t.Fatalf("file opening error: %s", err)
+			}
+			defer file.Close()
+
+			data, err := io.ReadAll(file)
+			if err != nil {
+				t.Fatalf("File reading error: %s", err)
+			}
+
+			characterJson, err := TibiaCharactersCharacterImpl(string(data), tc.url)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assert := assert.New(t)
+			character := characterJson.Character.CharacterInfo
+
+			assert.Len(characterJson.Character.Achievements, 0)
+			assert.Equal("Torbjörn", character.Name)
+			assert.Equal("___$$$$$$$$_______$$$$$$$$\n_$$$$$$$$$$$$__$$$$$$$$$$$$$$\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n_$$$$$$$$$$-Snulliz-$$$$$$$$$$$\n__$$$$$$$$$$$$$$$$$$$$$$$$$$\n____$$$$$$$$$$$$$$$$$$$$$$\n______$$$$$$$$$$$$$$$$$$\n________$$$$$$$$$$$$$$\n___________$$$$$$$$$\n____________$$$$$$\n_____________$$", character.Comment)
+		})
 	}
-
-	characterJson, err := TibiaCharactersCharacterImpl(string(data), "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert := assert.New(t)
-	character := characterJson.Character.CharacterInfo
-
-	assert.Len(characterJson.Character.Achievements, 0)
-	assert.Equal("Torbjörn", character.Name)
-	assert.Equal("___$$$$$$$$_______$$$$$$$$\n_$$$$$$$$$$$$__$$$$$$$$$$$$$$\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n_$$$$$$$$$$-Snulliz-$$$$$$$$$$$\n__$$$$$$$$$$$$$$$$$$$$$$$$$$\n____$$$$$$$$$$$$$$$$$$$$$$\n______$$$$$$$$$$$$$$$$$$\n________$$$$$$$$$$$$$$\n___________$$$$$$$$$\n____________$$$$$$\n_____________$$", character.Comment)
 }
 
 func TestNumber8(t *testing.T) {
