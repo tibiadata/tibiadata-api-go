@@ -15,80 +15,102 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/tibiadata/tibiadata-api-go/src/validation"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	//"time"
 )
 
 type fansiteAPICharacterResponse struct {
-	CharacterGameInformation struct {
-		CharacterName                  string   `json:"characterName"`
-		Level                          int      `json:"level"`
-		Vocation                       string   `json:"vocation"`
-		IsPromoted                     bool     `json:"isPromoted"`
-		Sex                            string   `json:"sex"`
-		World                          string   `json:"world"`
-		Residence                      string   `json:"residence"`
-		DeletedTimestamp               int64    `json:"deletedTimestamp"`
-		Comment                        *string  `json:"comment"`
-		WasRecentlyTradedAndNotRenamed bool     `json:"wasRecentlyTradedAndNotRenamed"`
-		Spouse                         *string  `json:"spouse"`
-		FormerWorld                    *string  `json:"formerWorld"`
-		LastLogin                      int64    `json:"lastLogin"`
-		IsPremium                      bool     `json:"isPremium"`
-		FormerNames                    []string `json:"formerNames"`
-		GuildName                      *string  `json:"guildName"`
-		GuildRank                      *string  `json:"guildRank"`
-		AchievementPoints              int      `json:"achievementPoints"`
-	} `json:"characterGameInformation"`
-	CharacterDeathsData *struct {
-		TooMany bool `json:"tooMany"`
-		Deaths  []struct {
-			Date      int64 `json:"date"`
-			Level     int   `json:"level"`
-			Murderers []struct {
-				Name            string  `json:"name"`
-				TradedMurderer  bool    `json:"tradedMurderer"`
-				Assist          bool    `json:"assist"`
-				PlayerCharacter bool    `json:"playerCharacter"`
-				Remark          *string `json:"remark"`
-			} `json:"murderers"`
-		} `json:"deaths"`
-	} `json:"characterDeathsData"`
-	CharacterAdminInformation *struct {
-		CharacterTitle        *string `json:"characterTitle"`
-		CharacterTitleCount   int     `json:"characterTitleCount"`
-		DisplayedAchievements []struct {
-			Name              string `json:"name"`
-			AchievementPoints int    `json:"achievementPoints"`
-			IsSecret          bool   `json:"isSecret"`
-		} `json:"displayedAchievements"`
-		Houses []struct {
-			HouseID   int    `json:"houseId"`
-			Name      string `json:"name"`
-			Town      string `json:"town"`
-			PaidUntil int64  `json:"paidUntil"`
-		} `json:"houses"`
-	} `json:"characterAdminInformation"`
-	CharacterAccountInformation *struct {
-		CreationDate             int64   `json:"creationDate"`
-		DeletionDate             int64   `json:"deletionDate"`
-		Position                 string  `json:"position"`
-		LoyaltyTitle             *string `json:"loyaltyTitle"`
-		AccountBadgeImageBaseURL string  `json:"accountBadgeImageBaseUrl"`
-		AccountBadges            []struct {
-			Icon        string `json:"icon"`
-			Name        string `json:"name"`
-			Description string `json:"description"`
-		} `json:"accountBadges"`
-	} `json:"characterAccountInformation"`
-	AccountCharacters []struct {
-		Name                           string  `json:"name"`
-		World                          string  `json:"world"`
-		DeletionDate                   int64   `json:"deletionDate"`
-		IsMainCharacter                bool    `json:"isMainCharacter"`
-		Group                          *string `json:"group"`
-		IsOnline                       bool    `json:"isOnline"`
-		WasRecentlyTradedAndNotRenamed bool    `json:"wasRecentlyTradedAndNotRenamed"`
-	} `json:"accountCharacters"`
+	CharacterGameInformation    fansiteAPICharacterGameInformation     `json:"characterGameInformation"`
+	CharacterDeathsData         *fansiteAPICharacterDeathsData         `json:"characterDeathsData"`
+	CharacterAdminInformation   *fansiteAPICharacterAdminInformation   `json:"characterAdminInformation"`
+	CharacterAccountInformation *fansiteAPICharacterAccountInformation `json:"characterAccountInformation"`
+	AccountCharacters           []fansiteAPIAccountCharacter           `json:"accountCharacters"`
+}
+
+type fansiteAPICharacterGameInformation struct {
+	CharacterName                  string   `json:"characterName"`
+	Level                          int      `json:"level"`
+	Vocation                       string   `json:"vocation"`
+	IsPromoted                     bool     `json:"isPromoted"`
+	Sex                            string   `json:"sex"`
+	World                          string   `json:"world"`
+	Residence                      string   `json:"residence"`
+	DeletedTimestamp               int64    `json:"deletedTimestamp"`
+	Comment                        *string  `json:"comment"`
+	WasRecentlyTradedAndNotRenamed bool     `json:"wasRecentlyTradedAndNotRenamed"`
+	Spouse                         *string  `json:"spouse"`
+	FormerWorld                    *string  `json:"formerWorld"`
+	LastLogin                      int64    `json:"lastLogin"`
+	IsPremium                      bool     `json:"isPremium"`
+	FormerNames                    []string `json:"formerNames"`
+	GuildName                      *string  `json:"guildName"`
+	GuildRank                      *string  `json:"guildRank"`
+	AchievementPoints              int      `json:"achievementPoints"`
+}
+
+type fansiteAPICharacterDeathsData struct {
+	TooMany bool                       `json:"tooMany"`
+	Deaths  []fansiteAPICharacterDeath `json:"deaths"`
+}
+
+type fansiteAPICharacterDeath struct {
+	Date      int64                         `json:"date"`
+	Level     int                           `json:"level"`
+	Murderers []fansiteAPICharacterMurderer `json:"murderers"`
+}
+
+type fansiteAPICharacterMurderer struct {
+	Name            string  `json:"name"`
+	TradedMurderer  bool    `json:"tradedMurderer"`
+	Assist          bool    `json:"assist"`
+	PlayerCharacter bool    `json:"playerCharacter"`
+	Remark          *string `json:"remark"`
+}
+
+type fansiteAPICharacterAdminInformation struct {
+	CharacterTitle        *string                          `json:"characterTitle"`
+	CharacterTitleCount   int                              `json:"characterTitleCount"`
+	DisplayedAchievements []fansiteAPICharacterAchievement `json:"displayedAchievements"`
+	Houses                []fansiteAPICharacterHouse       `json:"houses"`
+}
+
+type fansiteAPICharacterAchievement struct {
+	Name              string `json:"name"`
+	AchievementPoints int    `json:"achievementPoints"`
+	IsSecret          bool   `json:"isSecret"`
+}
+
+type fansiteAPICharacterHouse struct {
+	HouseID   int    `json:"houseId"`
+	Name      string `json:"name"`
+	Town      string `json:"town"`
+	PaidUntil int64  `json:"paidUntil"`
+}
+
+type fansiteAPICharacterAccountInformation struct {
+	CreationDate             int64                             `json:"creationDate"`
+	DeletionDate             int64                             `json:"deletionDate"`
+	Position                 string                            `json:"position"`
+	LoyaltyTitle             *string                           `json:"loyaltyTitle"`
+	AccountBadgeImageBaseURL string                            `json:"accountBadgeImageBaseUrl"`
+	AccountBadges            []fansiteAPICharacterAccountBadge `json:"accountBadges"`
+}
+
+type fansiteAPICharacterAccountBadge struct {
+	Icon        string `json:"icon"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+type fansiteAPIAccountCharacter struct {
+	Name                           string  `json:"name"`
+	World                          string  `json:"world"`
+	DeletionDate                   int64   `json:"deletionDate"`
+	IsMainCharacter                bool    `json:"isMainCharacter"`
+	Group                          *string `json:"group"`
+	IsOnline                       bool    `json:"isOnline"`
+	WasRecentlyTradedAndNotRenamed bool    `json:"wasRecentlyTradedAndNotRenamed"`
 }
 
 func fansiteUnixToDatetime(ts int64) string {
@@ -103,6 +125,10 @@ func fansiteUnixToDate(ts int64) string {
 		return ""
 	}
 	return time.Unix(ts, 0).UTC().Format("2006-01-02")
+}
+
+func tibiaDataLooksLikeJSON(content string) bool {
+	return strings.HasPrefix(strings.TrimSpace(content), "{")
 }
 
 // Child of CharacterInfo
@@ -217,7 +243,7 @@ const Br = 0x202
 
 // TibiaCharactersCharacter func
 func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterResponse, error) {
-	if strings.HasPrefix(strings.TrimSpace(BoxContentHTML), "{") {
+	if tibiaDataLooksLikeJSON(BoxContentHTML) {
 		var fansiteData fansiteAPICharacterResponse
 		if err := json.Unmarshal([]byte(BoxContentHTML), &fansiteData); err == nil {
 			characterInfo := CharacterInfo{
@@ -225,7 +251,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 				FormerNames:       nil,
 				Traded:            fansiteData.CharacterGameInformation.WasRecentlyTradedAndNotRenamed,
 				Sex:               fansiteData.CharacterGameInformation.Sex,
-				Vocation:          strings.Title(fansiteData.CharacterGameInformation.Vocation),
+				Vocation:          cases.Title(language.English).String(fansiteData.CharacterGameInformation.Vocation),
 				Level:             fansiteData.CharacterGameInformation.Level,
 				AchievementPoints: fansiteData.CharacterGameInformation.AchievementPoints,
 				World:             fansiteData.CharacterGameInformation.World,
