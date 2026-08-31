@@ -168,6 +168,10 @@ There are some endpoints that can be deviant between the container documentation
 
 - `/v4/highscores`-filtering on vocation is removed, only the `all` category is valid.
 
+### Fansite API
+
+The Fansite API allows you to access data provided by the official Tibia Fansite API using json and not by parsing HTML pages. To be able to use this you need to set a valid `TIBIA_FANSITEAPI_TOKEN` as an environment variable, which will be provided by CipSoft as part of their official Fansite program.
+
 ## General information
 
 Tibia is a registered trademark of [CipSoft GmbH](https://www.cipsoft.com/en/). Tibia and all products related to Tibia are copyright by [CipSoft GmbH](https://www.cipsoft.com/en/).
