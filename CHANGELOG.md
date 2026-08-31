@@ -1,5 +1,24 @@
 # Changelog
 
+## [4.10.0] - 2026-08-31
+
+### Added
+
+- feat(highscores): add phosphorus record category ([#708](https://github.com/tibiadata/tibiadata-api-go/pull/708) by [tobiasehlert](https://github.com/tobiasehlert))
+
+### Changed
+
+- chore(dependabot): group github/codeql-action updates ([#709](https://github.com/tibiadata/tibiadata-api-go/pull/709) by [tobiasehlert](https://github.com/tobiasehlert))
+- deps(ci): bump actions/attest-build-provenance from 4.1.1 to 4.2.2 ([#714](https://github.com/tibiadata/tibiadata-api-go/pull/714) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump actions/checkout from 7.0.0 to 7.0.1 ([#706](https://github.com/tibiadata/tibiadata-api-go/pull/706) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump actions/setup-go from 6.5.0 to 7.0.0 ([#702](https://github.com/tibiadata/tibiadata-api-go/pull/702) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/login-action from 4.4.0 to 4.6.0 ([#711](https://github.com/tibiadata/tibiadata-api-go/pull/711) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/setup-buildx-action from 4.2.0 to 4.3.0 ([#720](https://github.com/tibiadata/tibiadata-api-go/pull/720) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump the codeql-action group with 3 updates ([#710](https://github.com/tibiadata/tibiadata-api-go/pull/710), [#712](https://github.com/tibiadata/tibiadata-api-go/pull/712), [#713](https://github.com/tibiadata/tibiadata-api-go/pull/713) by [dependabot](https://github.com/dependabot))
+- deps(docker): bump golang from 1.26.4 to 1.26.6 ([#701](https://github.com/tibiadata/tibiadata-api-go/pull/701), [#719](https://github.com/tibiadata/tibiadata-api-go/pull/719) by [dependabot](https://github.com/dependabot))
+- deps(go): bump golang.org/x/net from 0.57.0 to 0.58.0 ([#716](https://github.com/tibiadata/tibiadata-api-go/pull/716) by [dependabot](https://github.com/dependabot))
+- deps(go): bump the testify group across 2 directories with 1 update ([#721](https://github.com/tibiadata/tibiadata-api-go/pull/721) by [dependabot](https://github.com/dependabot))
+
 ## [4.9.0] - 2026-07-11
 
 ### Changed
@@ -785,6 +804,7 @@ Head over to [tibiadata.com](https://tibiadata.com/2022/03/tibiadata-api-v3-rele
 
 Initial commit
 
+[4.10.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.9.0...v4.10.0
 [4.9.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.8.0...v4.9.0
 [4.8.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.7.0...v4.8.0
 [4.7.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.6.0...v4.7.0
