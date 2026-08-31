@@ -145,24 +145,26 @@ func TestWorldFormater(t *testing.T) {
 	assert.Equal(t, sanitizedStr, "Hesthdiáûõ")
 }
 
-func TestEscaper(t *testing.T) {
-	const (
-		strOne   = "god durin"
-		strTwo   = "god+durin"
-		strThree = "gód"
-		strFour  = "Näurin"
-	)
-
-	sanitizedStrOne := TibiaDataQueryEscapeString(strOne)
-	sanitizedStrTwo := TibiaDataQueryEscapeString(strTwo)
-	sanitizedStrThree := TibiaDataQueryEscapeString(strThree)
-	sanitizedStrFour := TibiaDataQueryEscapeString(strFour)
+func TestEscapers(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     string
+		queryWant string
+		pathWant  string
+	}{
+		{name: "space", input: "god durin", queryWant: "god+durin", pathWant: "god%20durin"},
+		{name: "plus", input: "god+durin", queryWant: "god+durin", pathWant: "god%20durin"},
+		{name: "utf8-acute", input: "gód", queryWant: "g%C3%B3d", pathWant: "g%C3%B3d"},
+		{name: "utf8-umlaut", input: "Näurin", queryWant: "N%C3%A4urin", pathWant: "N%C3%A4urin"},
+	}
 
 	assert := assert.New(t)
-	assert.Equal(sanitizedStrOne, "god+durin")
-	assert.Equal(sanitizedStrTwo, "god+durin")
-	assert.Equal(sanitizedStrThree, "g%C3%B3d")
-	assert.Equal(sanitizedStrFour, "N%C3%A4urin")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(tc.queryWant, TibiaDataQueryEscapeString(tc.input))
+			assert.Equal(tc.pathWant, TibiaDataPathEscapeString(tc.input))
+		})
+	}
 }
 
 func TestDateParser(t *testing.T) {

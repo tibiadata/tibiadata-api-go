@@ -89,6 +89,15 @@ func TibiaDataQueryEscapeString(data string) string {
 	return url.QueryEscape(data)
 }
 
+// TibiaDataPathEscapeString func - escapes path segments while treating '+' as space.
+func TibiaDataPathEscapeString(data string) string {
+	// switching "+" to " "
+	data = strings.ReplaceAll(data, "+", " ")
+
+	// returning with PathEscape function
+	return url.PathEscape(data)
+}
+
 // TibiaDataDate func
 func TibiaDataDate(date string) string {
 	// removing weird spacing and comma

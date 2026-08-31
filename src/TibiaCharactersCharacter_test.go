@@ -14,6 +14,76 @@ import (
 	"github.com/tibiadata/tibiadata-api-go/src/validation"
 )
 
+func TestCharacterTrollefar(t *testing.T) {
+	testCases := []struct {
+		name          string
+		fixture       string
+		url           string
+		expectedFirst string
+	}{
+		{
+			name:          "html",
+			fixture:       "testdata/characters/Trollefar.html",
+			url:           "https://www.tibia.com/community/?subtopic=characters&name=Trollefar",
+			expectedFirst: "https://www.tibia.com/community/?subtopic=characters&name=Trollefar",
+		},
+		{
+			name:          "json",
+			fixture:       "testdata/characters/Trollefar.json",
+			url:           "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Trollefar",
+			expectedFirst: "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Trollefar",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			file, err := static.TestFiles.Open(tc.fixture)
+			if err != nil {
+				t.Fatalf("file opening error: %s", err)
+			}
+			defer file.Close()
+
+			data, err := io.ReadAll(file)
+			if err != nil {
+				t.Fatalf("File reading error: %s", err)
+			}
+
+			characterJson, err := TibiaCharactersCharacterImpl(string(data), tc.url)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assert := assert.New(t)
+			character := characterJson.Character.CharacterInfo
+			information := characterJson.Information
+
+			assert.Equal("Trollefar", character.Name)
+			assert.Nil(character.FormerNames)
+			assert.False(character.Traded)
+			assert.Empty(character.DeletionDate)
+			assert.Equal("male", character.Sex)
+			assert.Equal("Trolltrasher", character.Title)
+			assert.Equal(9, character.UnlockedTitles)
+			assert.Equal("Knight", character.Vocation)
+			assert.Equal(202, character.Level)
+			assert.Equal(379, character.AchievementPoints)
+			assert.Equal("Vunira", character.World)
+			assert.Nil(character.FormerWorlds)
+			assert.Equal("Thais", character.Residence)
+			assert.Equal("Mighty troll", character.MarriedTo)
+			assert.Nil(character.Houses)
+			assert.Equal("Elysium", character.Guild.GuildName)
+			assert.Equal("Follower", character.Guild.Rank)
+			assert.Equal("2026-07-05T00:33:18Z", character.LastLogin)
+			assert.Equal("Free Account", character.AccountStatus)
+			assert.Equal("Don't let your ego get too close to your position, so that if your position gets shot down, your ego doesn't go with it. \n\n16:21 Halfing Outrider [74]: I mean You aka harry Potter and Fredde aka Young Virgin\n\n\nAdministrator, Bureaucrat and Main Contact of TibiaData API (www.tibiadata.com)", character.Comment)
+
+			assert.NotEmpty(information.TibiaURLs)
+			assert.Equal(tc.expectedFirst, information.TibiaURLs[0])
+		})
+	}
+}
+
 func TestNumber1(t *testing.T) {
 	file, err := static.TestFiles.Open("testdata/characters/Darkside Rafa.html")
 	if err != nil {
@@ -4163,6 +4233,79 @@ func TestNumber18(t *testing.T) {
 			idx, tc.Time, deaths[idx].Time,
 		)
 	}
+}
+
+func TestFansiteJSONMappingCompleteness(t *testing.T) {
+	input := `{
+			"characterGameInformation": {
+				"characterName": "Trollefar",
+				"level": 202,
+				"vocation": "knight",
+				"isPromoted": false,
+				"sex": "male",
+				"world": "Vunira",
+				"residence": "Thais",
+				"deletedTimestamp": 0,
+				"comment": "Test comment",
+				"wasRecentlyTradedAndNotRenamed": false,
+				"spouse": "Mighty troll",
+				"formerWorld": null,
+				"lastLogin": 1751675598,
+				"isPremium": false,
+				"formerNames": [],
+				"guildName": "Elysium",
+				"guildRank": "Follower",
+				"achievementPoints": 379
+			},
+			"characterDeathsData": {
+				"tooMany": false,
+				"deaths": []
+			},
+			"characterAdminInformation": {
+				"characterTitle": "Trolltrasher",
+				"characterTitleCount": 9,
+				"displayedAchievements": [
+					{"name":"Explorer","achievementPoints":2,"isSecret":false}
+				],
+				"houses": [
+					{"houseId":1234,"name":"Example House","town":"Thais","paidUntil":1767139200}
+				]
+			},
+			"characterAccountInformation": {
+				"creationDate": 1092302926,
+				"deletionDate": 0,
+				"position": "none",
+				"loyaltyTitle": "Keeper of Tibia",
+				"accountBadgeImageBaseUrl": "https://static.tibia.com/images/account/badges/",
+				"accountBadges": [
+					{"icon":"veteran.gif","name":"Veteran","description":"Veteran badge"}
+				]
+			},
+			"accountCharacters": [
+				{"name":"Trollefar","world":"Vunira","deletionDate":0,"isMainCharacter":true,"group":null,"isOnline":false,"wasRecentlyTradedAndNotRenamed":false}
+			]
+		}`
+
+	resp, err := TibiaCharactersCharacterImpl(input, "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Trollefar")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	assert.Equal("Trolltrasher", resp.Character.CharacterInfo.Title)
+	assert.Equal(9, resp.Character.CharacterInfo.UnlockedTitles)
+	assert.NotEmpty(resp.Character.Achievements)
+	assert.Equal("Explorer", resp.Character.Achievements[0].Name)
+	assert.NotEmpty(resp.Character.CharacterInfo.Houses)
+	assert.Equal("Example House", resp.Character.CharacterInfo.Houses[0].Name)
+	assert.Equal("2025-12-31", resp.Character.CharacterInfo.Houses[0].Paid)
+	assert.Equal("2004-08-12T09:28:46Z", resp.Character.AccountInformation.Created)
+	assert.Equal("Keeper of Tibia", resp.Character.AccountInformation.LoyaltyTitle)
+	assert.NotEmpty(resp.Character.AccountBadges)
+	assert.Equal("https://static.tibia.com/images/account/badges/veteran.gif", resp.Character.AccountBadges[0].IconURL)
+	assert.NotEmpty(resp.Character.OtherCharacters)
+	assert.Equal("Trollefar", resp.Character.OtherCharacters[0].Name)
+	assert.Equal("2025-07-05T00:33:18Z", resp.Character.CharacterInfo.LastLogin)
 }
 
 func BenchmarkNumber1(b *testing.B) {

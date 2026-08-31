@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -300,4 +301,31 @@ func TestErrorHandler(t *testing.T) {
 	c, _ = gin.CreateTestContext(w)
 	TibiaDataErrorHandler(c, validation.ErrStatusUnknown, http.StatusConflict)
 	assert.Equal(http.StatusBadGateway, w.Code)
+}
+
+func TestTibiaCharactersCharacterUsesHTMLURLWhenFansiteDisabled(t *testing.T) {
+	assert := assert.New(t)
+	prev := TibiaFansiteAPI
+	TibiaFansiteAPI = false
+	t.Cleanup(func() { TibiaFansiteAPI = prev })
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v4/character/Darkside%20Rafa", nil)
+	c.Params = []gin.Param{{Key: "name", Value: "Darkside Rafa"}}
+
+	tibiaCharactersCharacter(c)
+	assert.Equal(http.StatusOK, w.Code)
+	assert.NotEmpty(w.Body.Bytes())
+
+	var resp CharacterResponse
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if !assert.NoError(err) {
+		return
+	}
+	if !assert.NotEmpty(resp.Information.TibiaURLs) {
+		return
+	}
+	assert.Contains(resp.Information.TibiaURLs[0], "https://www.tibia.com/community/?subtopic=characters&name=")
 }

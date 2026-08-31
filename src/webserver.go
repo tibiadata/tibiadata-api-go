@@ -98,10 +98,11 @@ type Status struct {
 
 // TibiaDataRequest is the struct of request information
 type TibiaDataRequestStruct struct {
-	Method   string            `json:"method"`    // Request method (default: GET)
-	URL      string            `json:"url"`       // Request URL
-	FormData map[string]string `json:"form_data"` // Request form content (used when POST)
-	RawBody  bool              `json:"raw_body"`  // If set to true the whole content from tibia.com will be passed down
+	Method        string            `json:"method"`          // Request method (default: GET)
+	URL           string            `json:"url"`             // Request URL
+	FormData      map[string]string `json:"form_data"`       // Request form content (used when POST)
+	RawBody       bool              `json:"raw_body"`        // If set to true the whole content from tibia.com will be passed down
+	UseFansiteAPI bool              `json:"use_fansite_api"` // If true, fetch data from Fansite API JSON endpoint
 }
 
 // RunWebServer starts the gin server
@@ -336,9 +337,17 @@ func tibiaCharactersCharacter(c *gin.Context) {
 	}
 
 	// Build the request structure
+	requestURL := "https://www.tibia.com/community/?subtopic=characters&name=" + TibiaDataQueryEscapeString(name)
+	useFansiteAPI := false
+	if TibiaFansiteAPI {
+		requestURL = "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/" + TibiaDataPathEscapeString(name)
+		useFansiteAPI = true
+	}
+
 	tibiadataRequest := TibiaDataRequestStruct{
-		Method: resty.MethodGet,
-		URL:    "https://www.tibia.com/community/?subtopic=characters&name=" + TibiaDataQueryEscapeString(name),
+		Method:        resty.MethodGet,
+		URL:           requestURL,
+		UseFansiteAPI: useFansiteAPI,
 	}
 
 	// Handle the request
@@ -1165,14 +1174,24 @@ func TibiaDataErrorHandler(c *gin.Context, err error, httpCode int) {
 }
 
 func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestStruct, requestHandler func(string) (interface{}, error), handlerName string) {
-	BoxContentHTML, err := TibiaDataHTMLDataCollector(tibiaDataRequest)
+	var (
+		boxContent string
+		err        error
+	)
+
+	if tibiaDataRequest.UseFansiteAPI {
+		boxContent, err = TibiaDataJSONDataCollector(tibiaDataRequest)
+	} else {
+		boxContent, err = TibiaDataHTMLDataCollector(tibiaDataRequest)
+	}
+
 	// return error (e.g. for maintenance mode)
 	if err != nil {
 		TibiaDataErrorHandler(c, err, http.StatusBadGateway)
 		return
 	}
 
-	jsonData, err := requestHandler(BoxContentHTML)
+	jsonData, err := requestHandler(boxContent)
 	if err != nil {
 		TibiaDataErrorHandler(c, err, 0)
 		return
@@ -1182,9 +1201,36 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 	TibiaDataAPIHandleResponse(c, handlerName, jsonData)
 }
 
+func TibiaDataJSONDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string, error) {
+	if TibiaFansiteToken == "" {
+		return "", errors.New("missing TibiaFansiteToken for fansiteapi.tibia.com request")
+	}
+
+	res, err := tibiaDataClient.R().
+		SetHeader("Authorization", "Bearer "+TibiaFansiteToken).
+		Get(TibiaDataRequest.URL)
+	if err != nil {
+		return "", err
+	}
+
+	switch res.StatusCode() {
+	case http.StatusOK:
+		return string(res.Body()), nil
+	case http.StatusForbidden:
+		return "", validation.ErrStatusForbidden
+	default:
+		return "", validation.ErrStatusUnknown
+	}
+}
+
 // TibiaDataAPIHandleResponse func - handling of responses..
 // This should NOT be invoked if an error occured
 func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
+	if c == nil || c.Request == nil {
+		log.Printf("[warning] %s executed successfully but request context is nil", s)
+		return
+	}
+
 	// print to log about request
 	if gin.IsDebugging() {
 		log.Println("[debug] " + s + " - (" + c.Request.RequestURI + ") returned data:")
