@@ -2924,11 +2924,11 @@ func TestNumber6(t *testing.T) {
 	assert.Equal(8, len(characterJson.Character.AccountBadges))
 	globalPlayerBadge := characterJson.Character.AccountBadges[4]
 	assert.Equal("Global Player (Grade 3)", globalPlayerBadge.Name)
-	assert.Equal("https://static.tibia.com/images//badges/badge_globalplayer3.png", globalPlayerBadge.IconURL)
+	assert.Equal("https://static.tibia.com/images/badges/badge_globalplayer3.png", globalPlayerBadge.IconURL)
 	assert.Equal("Summing up the levels of all characters on the account amounts to at least 2000.", globalPlayerBadge.Description)
 	masterClassBadge := characterJson.Character.AccountBadges[7]
 	assert.Equal("Master Class (Grade 1)", masterClassBadge.Name)
-	assert.Equal("https://static.tibia.com/images//badges/badge_masterclass1.png", masterClassBadge.IconURL)
+	assert.Equal("https://static.tibia.com/images/badges/badge_masterclass1.png", masterClassBadge.IconURL)
 	assert.Equal("The account has reached at least level 100 with all four vocations.", masterClassBadge.Description)
 
 	assert.Len(characterJson.Character.Achievements, 5)
@@ -4276,7 +4276,7 @@ func TestFansiteJSONMappingCompleteness(t *testing.T) {
 				"deletionDate": 0,
 				"position": "none",
 				"loyaltyTitle": "Keeper of Tibia",
-				"accountBadgeImageBaseUrl": "https://static.tibia.com/images/account/badges/",
+				"accountBadgeImageBaseUrl": "static.tibia.com/images/account/badges",
 				"accountBadges": [
 					{"icon":"veteran.gif","name":"Veteran","description":"Veteran badge"}
 				]
