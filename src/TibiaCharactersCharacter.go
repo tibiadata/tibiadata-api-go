@@ -327,7 +327,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 				for _, b := range fansiteData.CharacterAccountInformation.AccountBadges {
 					accountBadges = append(accountBadges, AccountBadges{
 						Name:        b.Name,
-						IconURL:     fansiteData.CharacterAccountInformation.AccountBadgeImageBaseURL + b.Icon,
+						IconURL:     "https://" + fansiteData.CharacterAccountInformation.AccountBadgeImageBaseURL + "/" + b.Icon,
 						Description: b.Description,
 					})
 				}
@@ -588,7 +588,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 
 					AccountBadgesData = append(AccountBadgesData, AccountBadges{
 						Name:        CharacterListHTML[nameIdx:endNameIdx],
-						IconURL:     CharacterListHTML[iconIdx:endIconIdx],
+						IconURL:     strings.ReplaceAll(CharacterListHTML[iconIdx:endIconIdx], "images//badges", "images/badges"),
 						Description: CharacterListHTML[descIdx:endDescIdx],
 					})
 				}
