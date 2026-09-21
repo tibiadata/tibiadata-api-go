@@ -241,6 +241,8 @@ type CharacterResponse struct {
 // best to just simply use the Br constant value.
 const Br = 0x202
 
+const cipSoftMemberPosition = "CipSoft Member"
+
 // TibiaCharactersCharacter func
 func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterResponse, error) {
 	if tibiaDataLooksLikeJSON(BoxContentHTML) {
@@ -347,7 +349,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 				accountInformation.Created = fansiteUnixToDatetime(fansiteData.CharacterAccountInformation.CreationDate)
 				switch fansiteData.CharacterAccountInformation.Position {
 				case "cipSoftMember":
-					accountInformation.Position = "CipSoft Member"
+					accountInformation.Position = cipSoftMemberPosition
 				case "customerSupport":
 					accountInformation.Position = "Customer Support"
 				}
@@ -371,7 +373,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 				}
 				position := ""
 				if oc.Group != nil && *oc.Group == "cipSoftMember" {
-					position = "CipSoft Member"
+					position = cipSoftMemberPosition
 				}
 				otherCharacters = append(otherCharacters, OtherCharacters{
 					Name:     oc.Name,
@@ -981,8 +983,8 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 
 					// Is this character having a special position
 					var tmpPosition string
-					if strings.Contains(CharacterListHTML, "CipSoft Member") {
-						tmpPosition = "CipSoft Member"
+					if strings.Contains(CharacterListHTML, cipSoftMemberPosition) {
+						tmpPosition = cipSoftMemberPosition
 					}
 
 					// Create the character and append it to the other characters list
