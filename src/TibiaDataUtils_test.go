@@ -132,6 +132,75 @@ func TestValidateTibiaFansiteToken(t *testing.T) {
 			}),
 			wantError: true,
 		},
+		{
+			name:      "malformed header encoding",
+			token:     "!!!." + base64.RawURLEncoding.EncodeToString([]byte("{}")) + "." + base64.RawURLEncoding.EncodeToString([]byte("sig")),
+			wantError: true,
+		},
+		{
+			name:      "malformed claims encoding",
+			token:     base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256"}`)) + ".!!!." + base64.RawURLEncoding.EncodeToString([]byte("sig")),
+			wantError: true,
+		},
+		{
+			name:      "empty part in JWT",
+			token:     base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256"}`)) + ".." + base64.RawURLEncoding.EncodeToString([]byte("sig")),
+			wantError: true,
+		},
+		{
+			name: "nameid claim missing",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"role": tibiaFansiteTokenRole,
+				"exp":  time.Now().Add(time.Hour).Unix(),
+			}),
+			wantError: true,
+		},
+		{
+			name: "nameid claim not a string",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": 123,
+				"role":   tibiaFansiteTokenRole,
+				"exp":    time.Now().Add(time.Hour).Unix(),
+			}),
+			wantError: true,
+		},
+		{
+			name: "role claim not a string",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   123,
+				"exp":    time.Now().Add(time.Hour).Unix(),
+			}),
+			wantError: true,
+		},
+		{
+			name: "exp claim not numeric",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+				"exp":    true,
+			}),
+			wantError: true,
+		},
+		{
+			name: "exp claim not an integer",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+				"exp":    1234.5,
+			}),
+			wantError: true,
+		},
+		{
+			name: "nbf claim not numeric",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+				"exp":    time.Now().Add(time.Hour).Unix(),
+				"nbf":    "not-a-number",
+			}),
+			wantError: true,
+		},
 	}
 
 	for _, tt := range tests {

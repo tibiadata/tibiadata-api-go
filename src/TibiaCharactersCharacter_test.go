@@ -124,6 +124,11 @@ func TestFansiteCharacterInvalidJSON(t *testing.T) {
 	assert.ErrorIs(t, err, validation.ErrorCharacterNotFound)
 }
 
+func TestFansiteCharacterEmptyName(t *testing.T) {
+	_, err := TibiaCharactersCharacterImpl(`{"characterGameInformation":{"characterName":""}}`, "")
+	assert.ErrorIs(t, err, validation.ErrorCharacterNotFound)
+}
+
 func TestFansiteCharacterJSONFixtures(t *testing.T) {
 	entries, err := fs.ReadDir(static.TestFiles, "testdata/characters")
 	if err != nil {
