@@ -1,5 +1,5 @@
 # get golang container
-FROM golang:1.26.6 AS builder
+FROM golang:1.26.8 AS builder
 
 # get args
 ARG TibiaDataBuildBuilder=dockerfile
