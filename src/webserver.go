@@ -1226,14 +1226,18 @@ func TibiaDataJSONDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 // TibiaDataAPIHandleResponse func - handling of responses..
 // This should NOT be invoked if an error occured
 func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
-	if c == nil || c.Request == nil {
+	if c == nil {
 		log.Printf("[warning] %s executed successfully but request context is nil", s)
 		return
 	}
 
 	// print to log about request
 	if gin.IsDebugging() {
-		log.Println("[debug] " + s + " - (" + c.Request.RequestURI + ") returned data:")
+		requestURI := ""
+		if c.Request != nil {
+			requestURI = c.Request.RequestURI
+		}
+		log.Println("[debug] " + s + " - (" + requestURI + ") returned data:")
 		js, err := json.Marshal(j)
 		log.Printf("[debug] %s\n", js)
 		if err != nil {
@@ -1242,7 +1246,11 @@ func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 	}
 
 	if TibiaDataDebug {
-		log.Println("[info] " + s + " - (" + c.Request.RequestURI + ") executed successfully.")
+		requestURI := ""
+		if c.Request != nil {
+			requestURI = c.Request.RequestURI
+		}
+		log.Println("[info] " + s + " - (" + requestURI + ") executed successfully.")
 	}
 
 	// return successful response
