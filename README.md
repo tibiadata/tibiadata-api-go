@@ -126,6 +126,8 @@ The hosted API documentation for our [api.tibiadata.com](https://api.tibiadata.c
 
 There is a swagger-generated documentation available for download on the [GitHub Release](https://github.com/tibiadata/tibiadata-api-go/releases) of the version you are looking for.
 
+The official [Tibia Fansite API OpenAPI specification](https://fansiteapi.tibia.com/openapi/fansiteApi.v1.json) is also available. Access to this API is limited to participants in Tibia's official Fansite Program.
+
 ### Available endpoints
 
 Those are the current existing endpoints.
