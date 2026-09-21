@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -120,6 +122,45 @@ func TestFansiteCharacterJSONOptionalFields(t *testing.T) {
 func TestFansiteCharacterInvalidJSON(t *testing.T) {
 	_, err := TibiaCharactersCharacterImpl("{invalid", "")
 	assert.ErrorIs(t, err, validation.ErrorCharacterNotFound)
+}
+
+func TestFansiteCharacterJSONFixtures(t *testing.T) {
+	entries, err := fs.ReadDir(static.TestFiles, "testdata/characters")
+	if err != nil {
+		t.Fatalf("directory reading error: %s", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+
+		t.Run(entry.Name(), func(t *testing.T) {
+			fixture := "testdata/characters/" + entry.Name()
+			file, err := static.TestFiles.Open(fixture)
+			if err != nil {
+				t.Fatalf("file opening error: %s", err)
+			}
+			defer file.Close()
+
+			data, err := io.ReadAll(file)
+			if err != nil {
+				t.Fatalf("file reading error: %s", err)
+			}
+
+			var expected fansiteAPICharacterResponse
+			if err := json.Unmarshal(data, &expected); err != nil {
+				t.Fatalf("fixture unmarshalling error: %s", err)
+			}
+
+			response, err := TibiaCharactersCharacterImpl(string(data), "https://fansiteapi.example/character")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assert.Equal(t, expected.CharacterGameInformation.CharacterName, response.Character.CharacterInfo.Name)
+		})
+	}
 }
 
 func TestCharacterTrollefar(t *testing.T) {
