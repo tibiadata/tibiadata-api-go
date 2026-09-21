@@ -115,11 +115,13 @@ func TibiaDataInitializer() {
 	// Check for tibia fansiteapi bearer token
 	if isEnvExist("TIBIA_FANSITEAPI_TOKEN") {
 		TibiaFansiteToken = getEnv("TIBIA_FANSITEAPI_TOKEN", "")
-		if TibiaFansiteToken != "" {
+		if err := validateTibiaFansiteToken(TibiaFansiteToken); err == nil {
 			TibiaFansiteAPI = true
 			log.Printf("[info] TibiaData API fansiteapi: enabled")
 		} else {
-			log.Printf("[warn] TibiaData API fansiteapi: token is empty")
+			TibiaFansiteToken = ""
+			TibiaFansiteAPI = false
+			log.Printf("[warn] TibiaData API fansiteapi: token is invalid: %s", err)
 		}
 	}
 

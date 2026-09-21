@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -64,6 +67,104 @@ func TestGetEnvAsBool(t *testing.T) {
 	assert.False(false, getEnvAsBool("TIBIADATA_ENV", true))
 
 	os.Unsetenv("TIBIADATA_ENV")
+}
+
+func TestValidateTibiaFansiteToken(t *testing.T) {
+	tests := []struct {
+		name      string
+		token     string
+		wantError bool
+	}{
+		{
+			name: "valid Tibia Fansite API JWT shape",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+				"nbf":    time.Now().Add(-time.Hour).Unix(),
+				"exp":    time.Now().Add(time.Hour).Unix(),
+				"iat":    time.Now().Add(-time.Hour).Unix(),
+			}),
+		},
+		{
+			name:      "empty token",
+			token:     "",
+			wantError: true,
+		},
+		{
+			name:      "not compact JWT",
+			token:     "not-a-jwt",
+			wantError: true,
+		},
+		{
+			name:      "unsigned JWT",
+			token:     testJWT(t, "none", testTibiaFansiteTokenClaims(time.Now().Add(time.Hour).Unix())),
+			wantError: true,
+		},
+		{
+			name: "wrong role",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   "OtherRole",
+				"exp":    time.Now().Add(time.Hour).Unix(),
+			}),
+			wantError: true,
+		},
+		{
+			name: "missing expiration",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+			}),
+			wantError: true,
+		},
+		{
+			name:      "expired JWT",
+			token:     testJWT(t, tibiaFansiteTokenAlgorithm, testTibiaFansiteTokenClaims(time.Now().Add(-time.Hour).Unix())),
+			wantError: true,
+		},
+		{
+			name: "JWT not valid yet",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+				"nbf":    time.Now().Add(time.Hour).Unix(),
+				"exp":    time.Now().Add(2 * time.Hour).Unix(),
+			}),
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateTibiaFansiteToken(tt.token)
+			if tt.wantError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func testTibiaFansiteTokenClaims(exp int64) map[string]any {
+	return map[string]any{
+		"nameid": "TibiaData",
+		"role":   tibiaFansiteTokenRole,
+		"exp":    exp,
+	}
+}
+
+func testJWT(t *testing.T, algorithm string, claims map[string]any) string {
+	t.Helper()
+
+	header, err := json.Marshal(map[string]string{"alg": algorithm, "typ": "JWT"})
+	assert.NoError(t, err)
+	payload, err := json.Marshal(claims)
+	assert.NoError(t, err)
+
+	return base64.RawURLEncoding.EncodeToString(header) + "." +
+		base64.RawURLEncoding.EncodeToString(payload) + "." +
+		base64.RawURLEncoding.EncodeToString([]byte("signature"))
 }
 
 func TestTibiaDataVocationValidator(t *testing.T) {
