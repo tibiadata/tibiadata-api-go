@@ -14,6 +14,114 @@ import (
 	"github.com/tibiadata/tibiadata-api-go/src/validation"
 )
 
+func TestFansiteUnixConversions(t *testing.T) {
+	assert.Equal(t, "", fansiteUnixToDatetime(0))
+	assert.Equal(t, "", fansiteUnixToDatetime(-1))
+	assert.Equal(t, "2021-12-24T09:52:16Z", fansiteUnixToDatetime(1640339536))
+
+	assert.Equal(t, "", fansiteUnixToDate(0))
+	assert.Equal(t, "", fansiteUnixToDate(-1))
+	assert.Equal(t, "2021-12-24", fansiteUnixToDate(1640339536))
+}
+
+func TestFansiteCharacterJSONOptionalFields(t *testing.T) {
+	comment := "first line\r\nsecond line"
+	spouse := "Married Character"
+	formerWorld := "Antica, Premia"
+	guildName := "Test Guild"
+	guildRank := "Leader"
+	title := "Test Title"
+	loyaltyTitle := "Test Loyalty"
+	group := "cipSoftMember"
+	remark := "summoned creature"
+
+	input, err := json.Marshal(fansiteAPICharacterResponse{
+		CharacterGameInformation: fansiteAPICharacterGameInformation{
+			CharacterName:                  "JSON Character",
+			Level:                          100,
+			Vocation:                       "knight",
+			Sex:                            "female",
+			World:                          "Antica",
+			Residence:                      "Thais",
+			DeletedTimestamp:               1640339536,
+			Comment:                        &comment,
+			WasRecentlyTradedAndNotRenamed: true,
+			Spouse:                         &spouse,
+			FormerWorld:                    &formerWorld,
+			LastLogin:                      1640339536,
+			IsPremium:                      true,
+			FormerNames:                    []string{"Old Character"},
+			GuildName:                      &guildName,
+			GuildRank:                      &guildRank,
+			AchievementPoints:              500,
+		},
+		CharacterDeathsData: &fansiteAPICharacterDeathsData{
+			TooMany: true,
+			Deaths: []fansiteAPICharacterDeath{{
+				Date:  1640339536,
+				Level: 99,
+				Murderers: []fansiteAPICharacterMurderer{
+					{Name: "Killer", PlayerCharacter: true},
+					{Name: "Assist", Assist: true, Remark: &remark},
+				},
+			}},
+		},
+		CharacterAdminInformation: &fansiteAPICharacterAdminInformation{
+			CharacterTitle:        &title,
+			CharacterTitleCount:   3,
+			DisplayedAchievements: []fansiteAPICharacterAchievement{{Name: "zeta", AchievementPoints: 2}, {Name: "alpha", AchievementPoints: 1, IsSecret: true}},
+			Houses:                []fansiteAPICharacterHouse{{HouseID: 1, Name: "Test House", Town: "Thais", PaidUntil: 1640339536}, {HouseID: 2, Name: "Empty House", Town: "Venore"}},
+		},
+		CharacterAccountInformation: &fansiteAPICharacterAccountInformation{
+			CreationDate:             1640339536,
+			Position:                 "customerSupport",
+			LoyaltyTitle:             &loyaltyTitle,
+			AccountBadgeImageBaseURL: "example.com/badges",
+			AccountBadges:            []fansiteAPICharacterAccountBadge{{Icon: "badge.png", Name: "Test Badge", Description: "Test description"}},
+		},
+		AccountCharacters: []fansiteAPIAccountCharacter{
+			{Name: "Online Main", World: "Antica", IsMainCharacter: true, IsOnline: true, Group: &group},
+			{Name: "Deleted Offline", World: "Premia", DeletionDate: 1, WasRecentlyTradedAndNotRenamed: true},
+		},
+	})
+	assert.NoError(t, err)
+
+	response, err := TibiaCharactersCharacterImpl(string(input), "https://fansiteapi.example/character")
+	assert.NoError(t, err)
+
+	character := response.Character
+	assert.Equal(t, "JSON Character", character.CharacterInfo.Name)
+	assert.Equal(t, "Knight", character.CharacterInfo.Vocation)
+	assert.Equal(t, "Premium Account", character.CharacterInfo.AccountStatus)
+	assert.Equal(t, "first line\nsecond line", character.CharacterInfo.Comment)
+	assert.Equal(t, []string{"Old Character"}, character.CharacterInfo.FormerNames)
+	assert.Equal(t, []string{"Antica", "Premia"}, character.CharacterInfo.FormerWorlds)
+	assert.Equal(t, "Customer Support", character.AccountInformation.Position)
+	assert.Equal(t, "Test Loyalty", character.AccountInformation.LoyaltyTitle)
+	assert.Equal(t, "Test Guild", character.CharacterInfo.Guild.GuildName)
+	assert.Equal(t, "Leader", character.CharacterInfo.Guild.Rank)
+	assert.Equal(t, "Married Character", character.CharacterInfo.MarriedTo)
+	assert.Equal(t, "Test Title", character.CharacterInfo.Title)
+	assert.Equal(t, "2021-12-24", character.CharacterInfo.Houses[0].Paid)
+	assert.Equal(t, "", character.CharacterInfo.Houses[1].Paid)
+	assert.Equal(t, 2, len(character.Achievements))
+	assert.Equal(t, "alpha", character.Achievements[0].Name)
+	assert.True(t, character.Achievements[0].Secret)
+	assert.True(t, character.DeathsTruncated)
+	assert.Equal(t, "summoned creature", character.Deaths[0].Assists[0].Summon)
+	assert.Equal(t, "https://example.com/badges/badge.png", character.AccountBadges[0].IconURL)
+	assert.Equal(t, "2021-12-24T09:52:16Z", character.AccountInformation.Created)
+	assert.Equal(t, "online", character.OtherCharacters[0].Status)
+	assert.Equal(t, "CipSoft Member", character.OtherCharacters[0].Position)
+	assert.True(t, character.OtherCharacters[1].Deleted)
+	assert.True(t, character.OtherCharacters[1].Traded)
+}
+
+func TestFansiteCharacterInvalidJSON(t *testing.T) {
+	_, err := TibiaCharactersCharacterImpl("{invalid", "")
+	assert.ErrorIs(t, err, validation.ErrorCharacterNotFound)
+}
+
 func TestCharacterTrollefar(t *testing.T) {
 	testCases := []struct {
 		name          string
