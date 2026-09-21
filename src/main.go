@@ -89,6 +89,11 @@ func init() {
 	// Initialize shared HTTP client (must be after TibiaDataUserAgent is set)
 	initTibiaDataClient()
 
+	// Perform a best-effort, informational check of the fansite API status
+	if TibiaFansiteAPI {
+		checkTibiaFansiteAPIStatus()
+	}
+
 	// Initiate the validator
 	err := validation.Initiate(TibiaDataUserAgent)
 	if err != nil {

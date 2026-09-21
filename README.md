@@ -174,6 +174,8 @@ There are some endpoints that can be deviant between the container documentation
 
 The Fansite API allows you to access data provided by the official Tibia Fansite API using json and not by parsing HTML pages. To be able to use this you need to set a valid `TIBIA_FANSITEAPI_TOKEN` as an environment variable, which will be provided by CipSoft as part of their official Fansite program.
 
+On startup, when a valid token is configured, the API performs a best-effort check against the [Fansite API status endpoint](https://fansiteapi.tibia.com/api/v1/status) and logs whether it currently reports as available. This check is purely informational and never prevents the application from starting, since it falls back to HTML scraping regardless.
+
 The data returned by the HTML and JSON collector can differ, which may lead to discrepancies in the information provided by the two sources. Such findings are:
 
 - Characters vocation on the HTML page may still show premium-vocation, even though the account status is free.

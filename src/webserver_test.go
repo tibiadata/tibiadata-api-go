@@ -374,6 +374,59 @@ func TestTibiaDataJSONDataCollector(t *testing.T) {
 	})
 }
 
+func TestCheckTibiaFansiteAPIStatus(t *testing.T) {
+	prevURL := TibiaFansiteAPIStatusURL
+	t.Cleanup(func() { TibiaFansiteAPIStatusURL = prevURL })
+
+	t.Run("available", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"isAvailable":true}`))
+		}))
+		defer server.Close()
+
+		TibiaFansiteAPIStatusURL = server.URL
+		checkTibiaFansiteAPIStatus()
+	})
+
+	t.Run("unavailable", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"isAvailable":false}`))
+		}))
+		defer server.Close()
+
+		TibiaFansiteAPIStatusURL = server.URL
+		checkTibiaFansiteAPIStatus()
+	})
+
+	t.Run("non-200 status", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}))
+		defer server.Close()
+
+		TibiaFansiteAPIStatusURL = server.URL
+		checkTibiaFansiteAPIStatus()
+	})
+
+	t.Run("invalid JSON", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`not json`))
+		}))
+		defer server.Close()
+
+		TibiaFansiteAPIStatusURL = server.URL
+		checkTibiaFansiteAPIStatus()
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		TibiaFansiteAPIStatusURL = "http://127.0.0.1:0"
+		checkTibiaFansiteAPIStatus()
+	})
+}
+
 func TestTibiaCharactersCharacterUsesHTMLURLWhenFansiteDisabled(t *testing.T) {
 	assert := assert.New(t)
 	prev := TibiaFansiteAPI
