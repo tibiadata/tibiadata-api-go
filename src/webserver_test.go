@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -300,4 +301,219 @@ func TestErrorHandler(t *testing.T) {
 	c, _ = gin.CreateTestContext(w)
 	TibiaDataErrorHandler(c, validation.ErrStatusUnknown, http.StatusConflict)
 	assert.Equal(http.StatusBadGateway, w.Code)
+}
+
+func TestTibiaDataJSONDataCollector(t *testing.T) {
+	prevToken := TibiaFansiteToken
+	t.Cleanup(func() { TibiaFansiteToken = prevToken })
+
+	t.Run("missing token", func(t *testing.T) {
+		assert := assert.New(t)
+		TibiaFansiteToken = ""
+
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: "https://example.invalid"})
+		assert.Empty(body)
+		if assert.Error(err) {
+			assert.Contains(err.Error(), "missing TibiaFansiteToken")
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		assert := assert.New(t)
+		var gotAuth string
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotAuth = r.Header.Get("Authorization")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"characterGameInformation":{"characterName":"Test"}}`))
+		}))
+		defer server.Close()
+
+		TibiaFansiteToken = "test-token"
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		assert.NoError(err)
+		assert.Equal(`{"characterGameInformation":{"characterName":"Test"}}`, body)
+		assert.Equal("Bearer test-token", gotAuth)
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		assert := assert.New(t)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		}))
+		defer server.Close()
+
+		TibiaFansiteToken = "test-token"
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		assert.Empty(body)
+		assert.ErrorIs(err, validation.ErrStatusForbidden)
+	})
+
+	t.Run("unknown status", func(t *testing.T) {
+		assert := assert.New(t)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		TibiaFansiteToken = "test-token"
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		assert.Empty(body)
+		assert.ErrorIs(err, validation.ErrStatusUnknown)
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		TibiaFansiteToken = "test-token"
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: "http://127.0.0.1:0"})
+		assert.Empty(body)
+		assert.Error(err)
+	})
+}
+
+func TestCheckTibiaFansiteAPIStatus(t *testing.T) {
+	prevURL := TibiaFansiteAPIStatusURL
+	t.Cleanup(func() { TibiaFansiteAPIStatusURL = prevURL })
+
+	t.Run("available", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"isAvailable":true}`))
+		}))
+		defer server.Close()
+
+		TibiaFansiteAPIStatusURL = server.URL
+		checkTibiaFansiteAPIStatus()
+	})
+
+	t.Run("unavailable", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"isAvailable":false}`))
+		}))
+		defer server.Close()
+
+		TibiaFansiteAPIStatusURL = server.URL
+		checkTibiaFansiteAPIStatus()
+	})
+
+	t.Run("non-200 status", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}))
+		defer server.Close()
+
+		TibiaFansiteAPIStatusURL = server.URL
+		checkTibiaFansiteAPIStatus()
+	})
+
+	t.Run("invalid JSON", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`not json`))
+		}))
+		defer server.Close()
+
+		TibiaFansiteAPIStatusURL = server.URL
+		checkTibiaFansiteAPIStatus()
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		TibiaFansiteAPIStatusURL = "http://127.0.0.1:0"
+		checkTibiaFansiteAPIStatus()
+	})
+}
+
+func TestTibiaCharactersCharacterUsesHTMLURLWhenFansiteDisabled(t *testing.T) {
+	assert := assert.New(t)
+	prev := TibiaFansiteAPI
+	TibiaFansiteAPI = false
+	t.Cleanup(func() { TibiaFansiteAPI = prev })
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v4/character/Darkside%20Rafa", nil)
+	c.Params = []gin.Param{{Key: "name", Value: "Darkside Rafa"}}
+
+	tibiaCharactersCharacter(c)
+	assert.Equal(http.StatusOK, w.Code)
+	assert.NotEmpty(w.Body.Bytes())
+
+	var resp CharacterResponse
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	if !assert.NoError(err) {
+		return
+	}
+	if !assert.NotEmpty(resp.Information.TibiaURLs) {
+		return
+	}
+	assert.Contains(resp.Information.TibiaURLs[0], "https://www.tibia.com/community/?subtopic=characters&name=")
+}
+
+func TestTibiaCharactersCharacterUsesFansiteAPIWhenEnabled(t *testing.T) {
+	assert := assert.New(t)
+	prevEnabled := TibiaFansiteAPI
+	prevToken := TibiaFansiteToken
+	TibiaFansiteAPI = true
+	TibiaFansiteToken = ""
+	t.Cleanup(func() {
+		TibiaFansiteAPI = prevEnabled
+		TibiaFansiteToken = prevToken
+	})
+
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v4/character/Darkside%20Rafa", nil)
+	c.Params = []gin.Param{{Key: "name", Value: "Darkside Rafa"}}
+
+	tibiaCharactersCharacter(c)
+
+	// with no token configured, the fansite API request fails fast (no network call),
+	// exercising the fansite request-building and dispatch branches.
+	assert.Equal(http.StatusBadGateway, w.Code)
+}
+
+func TestTibiaDataAPIHandleResponseBranches(t *testing.T) {
+	type payload struct {
+		T string `json:"t"`
+	}
+
+	t.Run("nil context", func(t *testing.T) {
+		// exercises the early-return branch when no request context is available.
+		TibiaDataAPIHandleResponse(nil, "test", payload{T: "abc"})
+	})
+
+	t.Run("debug mode logs request details", func(t *testing.T) {
+		assert := assert.New(t)
+		prevMode := gin.Mode()
+		gin.SetMode(gin.DebugMode)
+		t.Cleanup(func() { gin.SetMode(prevMode) })
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/test", nil)
+
+		TibiaDataAPIHandleResponse(c, "test", payload{T: "abc"})
+		assert.Equal(http.StatusOK, w.Code)
+	})
+
+	t.Run("TibiaDataDebug logs execution", func(t *testing.T) {
+		assert := assert.New(t)
+		prevDebug := TibiaDataDebug
+		TibiaDataDebug = true
+		t.Cleanup(func() { TibiaDataDebug = prevDebug })
+
+		gin.SetMode(gin.TestMode)
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/test", nil)
+
+		TibiaDataAPIHandleResponse(c, "test", payload{T: "abc"})
+		assert.Equal(http.StatusOK, w.Code)
+	})
 }

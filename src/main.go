@@ -29,6 +29,10 @@ var (
 	TibiaDataBuildBuilder = "manual"      // will be set by GitHub Actions
 	TibiaDataBuildCommit  = "-"           // will be set by GitHub Actions (to git commit)
 	TibiaDataBuildEdition = "open-source" //
+
+	// Tibia Fansite API
+	TibiaFansiteAPI   bool   // indicates if the Tibia Fansite API is used
+	TibiaFansiteToken string // the token used for accessing the Tibia Fansite API
 )
 
 // @title           TibiaData API
@@ -85,6 +89,11 @@ func init() {
 	// Initialize shared HTTP client (must be after TibiaDataUserAgent is set)
 	initTibiaDataClient()
 
+	// Perform a best-effort, informational check of the fansite API status
+	if TibiaFansiteAPI {
+		checkTibiaFansiteAPIStatus()
+	}
+
 	// Initiate the validator
 	err := validation.Initiate(TibiaDataUserAgent)
 	if err != nil {
@@ -106,6 +115,19 @@ func TibiaDataInitializer() {
 	// Setting TibiaDataBuildEdition
 	if isEnvExist("TIBIADATA_EDITION") {
 		TibiaDataBuildEdition = getEnv("TIBIADATA_EDITION", "open-source")
+	}
+
+	// Check for tibia fansiteapi bearer token
+	if isEnvExist("TIBIA_FANSITEAPI_TOKEN") {
+		TibiaFansiteToken = getEnv("TIBIA_FANSITEAPI_TOKEN", "")
+		if err := validateTibiaFansiteToken(TibiaFansiteToken); err == nil {
+			TibiaFansiteAPI = true
+			log.Printf("[info] TibiaData API fansiteapi: enabled")
+		} else {
+			TibiaFansiteToken = ""
+			TibiaFansiteAPI = false
+			log.Printf("[warn] TibiaData API fansiteapi: token is invalid: %s", err)
+		}
 	}
 
 	// Adding information of host

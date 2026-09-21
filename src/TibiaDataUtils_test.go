@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -64,6 +67,173 @@ func TestGetEnvAsBool(t *testing.T) {
 	assert.False(false, getEnvAsBool("TIBIADATA_ENV", true))
 
 	os.Unsetenv("TIBIADATA_ENV")
+}
+
+func TestValidateTibiaFansiteToken(t *testing.T) {
+	tests := []struct {
+		name      string
+		token     string
+		wantError bool
+	}{
+		{
+			name: "valid Tibia Fansite API JWT shape",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+				"nbf":    time.Now().Add(-time.Hour).Unix(),
+				"exp":    time.Now().Add(time.Hour).Unix(),
+				"iat":    time.Now().Add(-time.Hour).Unix(),
+			}),
+		},
+		{
+			name:      "empty token",
+			token:     "",
+			wantError: true,
+		},
+		{
+			name:      "not compact JWT",
+			token:     "not-a-jwt",
+			wantError: true,
+		},
+		{
+			name:      "unsigned JWT",
+			token:     testJWT(t, "none", testTibiaFansiteTokenClaims(time.Now().Add(time.Hour).Unix())),
+			wantError: true,
+		},
+		{
+			name: "wrong role",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   "OtherRole",
+				"exp":    time.Now().Add(time.Hour).Unix(),
+			}),
+			wantError: true,
+		},
+		{
+			name: "missing expiration",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+			}),
+			wantError: true,
+		},
+		{
+			name:      "expired JWT",
+			token:     testJWT(t, tibiaFansiteTokenAlgorithm, testTibiaFansiteTokenClaims(time.Now().Add(-time.Hour).Unix())),
+			wantError: true,
+		},
+		{
+			name: "JWT not valid yet",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+				"nbf":    time.Now().Add(time.Hour).Unix(),
+				"exp":    time.Now().Add(2 * time.Hour).Unix(),
+			}),
+			wantError: true,
+		},
+		{
+			name:      "malformed header encoding",
+			token:     "!!!." + base64.RawURLEncoding.EncodeToString([]byte("{}")) + "." + base64.RawURLEncoding.EncodeToString([]byte("sig")),
+			wantError: true,
+		},
+		{
+			name:      "malformed claims encoding",
+			token:     base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256"}`)) + ".!!!." + base64.RawURLEncoding.EncodeToString([]byte("sig")),
+			wantError: true,
+		},
+		{
+			name:      "empty part in JWT",
+			token:     base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"HS256"}`)) + ".." + base64.RawURLEncoding.EncodeToString([]byte("sig")),
+			wantError: true,
+		},
+		{
+			name: "nameid claim missing",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"role": tibiaFansiteTokenRole,
+				"exp":  time.Now().Add(time.Hour).Unix(),
+			}),
+			wantError: true,
+		},
+		{
+			name: "nameid claim not a string",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": 123,
+				"role":   tibiaFansiteTokenRole,
+				"exp":    time.Now().Add(time.Hour).Unix(),
+			}),
+			wantError: true,
+		},
+		{
+			name: "role claim not a string",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   123,
+				"exp":    time.Now().Add(time.Hour).Unix(),
+			}),
+			wantError: true,
+		},
+		{
+			name: "exp claim not numeric",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+				"exp":    true,
+			}),
+			wantError: true,
+		},
+		{
+			name: "exp claim not an integer",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+				"exp":    1234.5,
+			}),
+			wantError: true,
+		},
+		{
+			name: "nbf claim not numeric",
+			token: testJWT(t, tibiaFansiteTokenAlgorithm, map[string]any{
+				"nameid": "TibiaData",
+				"role":   tibiaFansiteTokenRole,
+				"exp":    time.Now().Add(time.Hour).Unix(),
+				"nbf":    "not-a-number",
+			}),
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateTibiaFansiteToken(tt.token)
+			if tt.wantError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func testTibiaFansiteTokenClaims(exp int64) map[string]any {
+	return map[string]any{
+		"nameid": "TibiaData",
+		"role":   tibiaFansiteTokenRole,
+		"exp":    exp,
+	}
+}
+
+func testJWT(t *testing.T, algorithm string, claims map[string]any) string {
+	t.Helper()
+
+	header, err := json.Marshal(map[string]string{"alg": algorithm, "typ": "JWT"})
+	assert.NoError(t, err)
+	payload, err := json.Marshal(claims)
+	assert.NoError(t, err)
+
+	return base64.RawURLEncoding.EncodeToString(header) + "." +
+		base64.RawURLEncoding.EncodeToString(payload) + "." +
+		base64.RawURLEncoding.EncodeToString([]byte("signature"))
 }
 
 func TestTibiaDataVocationValidator(t *testing.T) {
@@ -145,24 +315,26 @@ func TestWorldFormater(t *testing.T) {
 	assert.Equal(t, sanitizedStr, "Hesthdiáûõ")
 }
 
-func TestEscaper(t *testing.T) {
-	const (
-		strOne   = "god durin"
-		strTwo   = "god+durin"
-		strThree = "gód"
-		strFour  = "Näurin"
-	)
-
-	sanitizedStrOne := TibiaDataQueryEscapeString(strOne)
-	sanitizedStrTwo := TibiaDataQueryEscapeString(strTwo)
-	sanitizedStrThree := TibiaDataQueryEscapeString(strThree)
-	sanitizedStrFour := TibiaDataQueryEscapeString(strFour)
+func TestEscapers(t *testing.T) {
+	testCases := []struct {
+		name      string
+		input     string
+		queryWant string
+		pathWant  string
+	}{
+		{name: "space", input: "god durin", queryWant: "god+durin", pathWant: "god%20durin"},
+		{name: "plus", input: "god+durin", queryWant: "god+durin", pathWant: "god%20durin"},
+		{name: "utf8-acute", input: "gód", queryWant: "g%C3%B3d", pathWant: "g%C3%B3d"},
+		{name: "utf8-umlaut", input: "Näurin", queryWant: "N%C3%A4urin", pathWant: "N%C3%A4urin"},
+	}
 
 	assert := assert.New(t)
-	assert.Equal(sanitizedStrOne, "god+durin")
-	assert.Equal(sanitizedStrTwo, "god+durin")
-	assert.Equal(sanitizedStrThree, "g%C3%B3d")
-	assert.Equal(sanitizedStrFour, "N%C3%A4urin")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(tc.queryWant, TibiaDataQueryEscapeString(tc.input))
+			assert.Equal(tc.pathWant, TibiaDataPathEscapeString(tc.input))
+		})
+	}
 }
 
 func TestDateParser(t *testing.T) {

@@ -126,6 +126,8 @@ The hosted API documentation for our [api.tibiadata.com](https://api.tibiadata.c
 
 There is a swagger-generated documentation available for download on the [GitHub Release](https://github.com/tibiadata/tibiadata-api-go/releases) of the version you are looking for.
 
+The official [Tibia Fansite API OpenAPI specification](https://fansiteapi.tibia.com/openapi/fansiteApi.v1.json) is also available. Access to this API is limited to participants in Tibia's official Fansite Program.
+
 ### Available endpoints
 
 Those are the current existing endpoints.
@@ -167,6 +169,17 @@ In addition to the deprecated API versions like v1, v2 and v3, there are also so
 There are some endpoints that can be deviant between the container documentation and the hosted version. This is due to restricted mode that restrict certain API actions due to high load on the tibia.com servers.
 
 - `/v4/highscores`-filtering on vocation is removed, only the `all` category is valid.
+
+### Fansite API
+
+The Fansite API allows you to access data provided by the official Tibia Fansite API using json and not by parsing HTML pages. To be able to use this you need to set a valid `TIBIA_FANSITEAPI_TOKEN` as an environment variable, which will be provided by CipSoft as part of their official Fansite program.
+
+On startup, when a valid token is configured, the API performs a best-effort check against the [Fansite API status endpoint](https://fansiteapi.tibia.com/api/v1/status) and logs whether it currently reports as available. This check is purely informational and never prevents the application from starting, since it falls back to HTML scraping regardless.
+
+The data returned by the HTML and JSON collector can differ, which may lead to discrepancies in the information provided by the two sources. Such findings are:
+
+- Characters vocation on the HTML page may still show premium-vocation, even though the account status is free.
+- Account achievements on the HTML page do not reflect the actual achievements grade as correctly shown by the JSON collector.
 
 ## General information
 

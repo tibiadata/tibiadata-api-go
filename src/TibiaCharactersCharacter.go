@@ -2,18 +2,134 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"reflect"
+	"sort"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/tibiadata/tibiadata-api-go/src/validation"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	//"time"
 )
+
+type fansiteAPICharacterResponse struct {
+	CharacterGameInformation    fansiteAPICharacterGameInformation     `json:"characterGameInformation"`
+	CharacterDeathsData         *fansiteAPICharacterDeathsData         `json:"characterDeathsData"`
+	CharacterAdminInformation   *fansiteAPICharacterAdminInformation   `json:"characterAdminInformation"`
+	CharacterAccountInformation *fansiteAPICharacterAccountInformation `json:"characterAccountInformation"`
+	AccountCharacters           []fansiteAPIAccountCharacter           `json:"accountCharacters"`
+}
+
+type fansiteAPICharacterGameInformation struct {
+	CharacterName                  string   `json:"characterName"`
+	Level                          int      `json:"level"`
+	Vocation                       string   `json:"vocation"`
+	IsPromoted                     bool     `json:"isPromoted"`
+	Sex                            string   `json:"sex"`
+	World                          string   `json:"world"`
+	Residence                      string   `json:"residence"`
+	DeletedTimestamp               int64    `json:"deletedTimestamp"`
+	Comment                        *string  `json:"comment"`
+	WasRecentlyTradedAndNotRenamed bool     `json:"wasRecentlyTradedAndNotRenamed"`
+	Spouse                         *string  `json:"spouse"`
+	FormerWorld                    *string  `json:"formerWorld"`
+	LastLogin                      int64    `json:"lastLogin"`
+	IsPremium                      bool     `json:"isPremium"`
+	FormerNames                    []string `json:"formerNames"`
+	GuildName                      *string  `json:"guildName"`
+	GuildRank                      *string  `json:"guildRank"`
+	AchievementPoints              int      `json:"achievementPoints"`
+}
+
+type fansiteAPICharacterDeathsData struct {
+	TooMany bool                       `json:"tooMany"`
+	Deaths  []fansiteAPICharacterDeath `json:"deaths"`
+}
+
+type fansiteAPICharacterDeath struct {
+	Date      int64                         `json:"date"`
+	Level     int                           `json:"level"`
+	Murderers []fansiteAPICharacterMurderer `json:"murderers"`
+}
+
+type fansiteAPICharacterMurderer struct {
+	Name            string  `json:"name"`
+	TradedMurderer  bool    `json:"tradedMurderer"`
+	Assist          bool    `json:"assist"`
+	PlayerCharacter bool    `json:"playerCharacter"`
+	Remark          *string `json:"remark"`
+}
+
+type fansiteAPICharacterAdminInformation struct {
+	CharacterTitle        *string                          `json:"characterTitle"`
+	CharacterTitleCount   int                              `json:"characterTitleCount"`
+	DisplayedAchievements []fansiteAPICharacterAchievement `json:"displayedAchievements"`
+	Houses                []fansiteAPICharacterHouse       `json:"houses"`
+}
+
+type fansiteAPICharacterAchievement struct {
+	Name              string `json:"name"`
+	AchievementPoints int    `json:"achievementPoints"`
+	IsSecret          bool   `json:"isSecret"`
+}
+
+type fansiteAPICharacterHouse struct {
+	HouseID   int    `json:"houseId"`
+	Name      string `json:"name"`
+	Town      string `json:"town"`
+	PaidUntil int64  `json:"paidUntil"`
+}
+
+type fansiteAPICharacterAccountInformation struct {
+	CreationDate             int64                             `json:"creationDate"`
+	DeletionDate             int64                             `json:"deletionDate"`
+	Position                 string                            `json:"position"`
+	LoyaltyTitle             *string                           `json:"loyaltyTitle"`
+	AccountBadgeImageBaseURL string                            `json:"accountBadgeImageBaseUrl"`
+	AccountBadges            []fansiteAPICharacterAccountBadge `json:"accountBadges"`
+}
+
+type fansiteAPICharacterAccountBadge struct {
+	Icon        string `json:"icon"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+type fansiteAPIAccountCharacter struct {
+	Name                           string  `json:"name"`
+	World                          string  `json:"world"`
+	DeletionDate                   int64   `json:"deletionDate"`
+	IsMainCharacter                bool    `json:"isMainCharacter"`
+	Group                          *string `json:"group"`
+	IsOnline                       bool    `json:"isOnline"`
+	WasRecentlyTradedAndNotRenamed bool    `json:"wasRecentlyTradedAndNotRenamed"`
+}
+
+func fansiteUnixToDatetime(ts int64) string {
+	if ts <= 0 {
+		return ""
+	}
+	return time.Unix(ts, 0).UTC().Format(time.RFC3339)
+}
+
+func fansiteUnixToDate(ts int64) string {
+	if ts <= 0 {
+		return ""
+	}
+	return time.Unix(ts, 0).UTC().Format("2006-01-02")
+}
+
+func tibiaDataLooksLikeJSON(content string) bool {
+	return strings.HasPrefix(strings.TrimSpace(content), "{")
+}
 
 // Child of CharacterInfo
 type Houses struct {
@@ -125,8 +241,178 @@ type CharacterResponse struct {
 // best to just simply use the Br constant value.
 const Br = 0x202
 
+const cipSoftMemberPosition = "CipSoft Member"
+
 // TibiaCharactersCharacter func
 func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterResponse, error) {
+	if tibiaDataLooksLikeJSON(BoxContentHTML) {
+		var fansiteData fansiteAPICharacterResponse
+		if err := json.Unmarshal([]byte(BoxContentHTML), &fansiteData); err == nil {
+			characterInfo := CharacterInfo{
+				Name:              fansiteData.CharacterGameInformation.CharacterName,
+				FormerNames:       nil,
+				Traded:            fansiteData.CharacterGameInformation.WasRecentlyTradedAndNotRenamed,
+				Sex:               fansiteData.CharacterGameInformation.Sex,
+				Vocation:          cases.Title(language.English).String(fansiteData.CharacterGameInformation.Vocation),
+				Level:             fansiteData.CharacterGameInformation.Level,
+				AchievementPoints: fansiteData.CharacterGameInformation.AchievementPoints,
+				World:             fansiteData.CharacterGameInformation.World,
+				Residence:         fansiteData.CharacterGameInformation.Residence,
+				AccountStatus:     "Free Account",
+			}
+
+			if fansiteData.CharacterGameInformation.IsPremium {
+				characterInfo.AccountStatus = "Premium Account"
+			}
+			if fansiteData.CharacterGameInformation.Comment != nil {
+				characterInfo.Comment = strings.ReplaceAll(*fansiteData.CharacterGameInformation.Comment, "\r\n", "\n")
+			}
+			if len(fansiteData.CharacterGameInformation.FormerNames) > 0 {
+				characterInfo.FormerNames = fansiteData.CharacterGameInformation.FormerNames
+			}
+			if fansiteData.CharacterGameInformation.Spouse != nil {
+				characterInfo.MarriedTo = *fansiteData.CharacterGameInformation.Spouse
+			}
+			if fansiteData.CharacterGameInformation.FormerWorld != nil && *fansiteData.CharacterGameInformation.FormerWorld != "" {
+				characterInfo.FormerWorlds = strings.Split(*fansiteData.CharacterGameInformation.FormerWorld, ", ")
+			}
+			if fansiteData.CharacterGameInformation.GuildName != nil {
+				characterInfo.Guild.GuildName = *fansiteData.CharacterGameInformation.GuildName
+			}
+			if fansiteData.CharacterGameInformation.GuildRank != nil {
+				characterInfo.Guild.Rank = *fansiteData.CharacterGameInformation.GuildRank
+			}
+			if fansiteData.CharacterGameInformation.LastLogin > 0 {
+				characterInfo.LastLogin = fansiteUnixToDatetime(fansiteData.CharacterGameInformation.LastLogin)
+			}
+			if fansiteData.CharacterGameInformation.DeletedTimestamp > 0 {
+				characterInfo.DeletionDate = fansiteUnixToDatetime(fansiteData.CharacterGameInformation.DeletedTimestamp)
+			}
+
+			var deaths []Deaths
+			var deathsTruncated bool
+			if fansiteData.CharacterDeathsData != nil {
+				deathsTruncated = fansiteData.CharacterDeathsData.TooMany
+				for _, d := range fansiteData.CharacterDeathsData.Deaths {
+					death := Deaths{
+						Time:  fansiteUnixToDatetime(d.Date),
+						Level: d.Level,
+					}
+					for _, murderer := range d.Murderers {
+						k := Killers{
+							Name:   murderer.Name,
+							Player: murderer.PlayerCharacter,
+							Traded: murderer.TradedMurderer,
+						}
+						if murderer.Remark != nil {
+							k.Summon = *murderer.Remark
+						}
+						if murderer.Assist {
+							death.Assists = append(death.Assists, k)
+						} else {
+							death.Killers = append(death.Killers, k)
+						}
+					}
+					deaths = append(deaths, death)
+				}
+			}
+
+			var achievements []Achievements
+			if fansiteData.CharacterAdminInformation != nil {
+				if fansiteData.CharacterAdminInformation.CharacterTitle != nil {
+					characterInfo.Title = *fansiteData.CharacterAdminInformation.CharacterTitle
+				}
+				characterInfo.UnlockedTitles = fansiteData.CharacterAdminInformation.CharacterTitleCount
+				for _, a := range fansiteData.CharacterAdminInformation.DisplayedAchievements {
+					achievements = append(achievements, Achievements{
+						Name:   TibiaDataSanitizeStrings(a.Name),
+						Grade:  a.AchievementPoints,
+						Secret: a.IsSecret,
+					})
+				}
+				sort.SliceStable(achievements, func(i, j int) bool {
+					return strings.ToLower(achievements[i].Name) < strings.ToLower(achievements[j].Name)
+				})
+				for _, h := range fansiteData.CharacterAdminInformation.Houses {
+					characterInfo.Houses = append(characterInfo.Houses, Houses{
+						Name:    h.Name,
+						Town:    h.Town,
+						Paid:    fansiteUnixToDate(h.PaidUntil),
+						HouseID: h.HouseID,
+					})
+				}
+			}
+
+			accountInformation := AccountInformation{}
+			accountBadges := []AccountBadges{}
+			if fansiteData.CharacterAccountInformation != nil {
+				accountInformation.Created = fansiteUnixToDatetime(fansiteData.CharacterAccountInformation.CreationDate)
+				switch fansiteData.CharacterAccountInformation.Position {
+				case "cipSoftMember":
+					accountInformation.Position = cipSoftMemberPosition
+				case "customerSupport":
+					accountInformation.Position = "Customer Support"
+				}
+				if fansiteData.CharacterAccountInformation.LoyaltyTitle != nil {
+					accountInformation.LoyaltyTitle = *fansiteData.CharacterAccountInformation.LoyaltyTitle
+				}
+				for _, b := range fansiteData.CharacterAccountInformation.AccountBadges {
+					accountBadges = append(accountBadges, AccountBadges{
+						Name:        b.Name,
+						IconURL:     "https://" + fansiteData.CharacterAccountInformation.AccountBadgeImageBaseURL + "/" + b.Icon,
+						Description: b.Description,
+					})
+				}
+			}
+
+			otherCharacters := []OtherCharacters{}
+			for _, oc := range fansiteData.AccountCharacters {
+				status := "offline"
+				if oc.IsOnline {
+					status = "online"
+				}
+				position := ""
+				if oc.Group != nil && *oc.Group == "cipSoftMember" {
+					position = cipSoftMemberPosition
+				}
+				otherCharacters = append(otherCharacters, OtherCharacters{
+					Name:     oc.Name,
+					World:    oc.World,
+					Status:   status,
+					Deleted:  oc.DeletionDate > 0,
+					Main:     oc.IsMainCharacter,
+					Traded:   oc.WasRecentlyTradedAndNotRenamed,
+					Position: position,
+				})
+			}
+
+			charData := Character{
+				CharacterInfo:      characterInfo,
+				AccountBadges:      accountBadges,
+				Achievements:       achievements,
+				Deaths:             deaths,
+				DeathsTruncated:    deathsTruncated,
+				AccountInformation: accountInformation,
+				OtherCharacters:    otherCharacters,
+			}
+
+			if reflect.DeepEqual(charData, Character{}) || characterInfo.Name == "" {
+				return CharacterResponse{}, validation.ErrorCharacterNotFound
+			}
+
+			return CharacterResponse{
+				charData,
+				Information{
+					APIDetails: TibiaDataAPIDetails,
+					Timestamp:  TibiaDataDatetime(""),
+					TibiaURLs:  []string{url},
+					Status: Status{
+						HTTPCode: http.StatusOK,
+					},
+				},
+			}, nil
+		}
+	}
 	var (
 		// local strings used in this function
 		localDivQueryString = ".TableContentContainer tr"
@@ -229,7 +515,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					CharacterInfoData.AccountStatus = RowData
 				case "Married To:":
 					AnchorQuery := s.Find("a")
-					CharacterInfoData.MarriedTo = AnchorQuery.Nodes[0].FirstChild.Data
+					CharacterInfoData.MarriedTo = TibiaDataSanitizeStrings(AnchorQuery.Nodes[0].FirstChild.Data)
 				case "House:":
 					AnchorQuery := s.Find("a")
 					HouseName := AnchorQuery.Nodes[0].FirstChild.Data
@@ -334,7 +620,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 
 					AccountBadgesData = append(AccountBadgesData, AccountBadges{
 						Name:        CharacterListHTML[nameIdx:endNameIdx],
-						IconURL:     CharacterListHTML[iconIdx:endIconIdx],
+						IconURL:     strings.ReplaceAll(CharacterListHTML[iconIdx:endIconIdx], "images//badges", "images/badges"),
 						Description: CharacterListHTML[descIdx:endDescIdx],
 					})
 				}
@@ -368,7 +654,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					) + nameIdx
 
 					AchievementsData = append(AchievementsData, Achievements{
-						Name:   CharacterListHTML[nameIdx:endNameIdx],
+						Name:   TibiaDataSanitizeStrings(CharacterListHTML[nameIdx:endNameIdx]),
 						Grade:  strings.Count(CharacterListHTML, "achievement-grade-symbol"),
 						Secret: strings.Contains(CharacterListHTML, "achievement-secret-symbol"),
 					})
@@ -697,8 +983,8 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 
 					// Is this character having a special position
 					var tmpPosition string
-					if strings.Contains(CharacterListHTML, "CipSoft Member") {
-						tmpPosition = "CipSoft Member"
+					if strings.Contains(CharacterListHTML, cipSoftMemberPosition) {
+						tmpPosition = cipSoftMemberPosition
 					}
 
 					// Create the character and append it to the other characters list

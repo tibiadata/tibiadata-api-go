@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"html"
 	"log"
 	"net/url"
@@ -14,6 +17,11 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/norm"
+)
+
+const (
+	tibiaFansiteTokenAlgorithm = "HS256"
+	tibiaFansiteTokenRole      = "FansiteApiAccess"
 )
 
 // berlinLocation is cached to avoid repeated time.LoadLocation calls per request.
@@ -87,6 +95,15 @@ func TibiaDataQueryEscapeString(data string) string {
 
 	// returning with QueryEscape function
 	return url.QueryEscape(data)
+}
+
+// TibiaDataPathEscapeString func - escapes path segments while treating '+' as space.
+func TibiaDataPathEscapeString(data string) string {
+	// switching "+" to " "
+	data = strings.ReplaceAll(data, "+", " ")
+
+	// returning with PathEscape function
+	return url.PathEscape(data)
 }
 
 // TibiaDataDate func
@@ -236,6 +253,128 @@ func getEnvAsBool(name string, defaultVal bool) bool {
 	}
 
 	return defaultVal
+}
+
+func validateTibiaFansiteToken(token string) error {
+	if token == "" {
+		return fmt.Errorf("empty token")
+	}
+
+	parts := strings.Split(token, ".")
+	if err := validateJWTParts(parts); err != nil {
+		return err
+	}
+
+	var header struct {
+		Algorithm string `json:"alg"`
+	}
+	if err := decodeJWTPart(parts[0], &header); err != nil {
+		return fmt.Errorf("invalid JWT header: %w", err)
+	}
+	if header.Algorithm != tibiaFansiteTokenAlgorithm {
+		return fmt.Errorf("JWT header must use %s signing algorithm", tibiaFansiteTokenAlgorithm)
+	}
+
+	var claims map[string]json.RawMessage
+	if err := decodeJWTPart(parts[1], &claims); err != nil {
+		return fmt.Errorf("invalid JWT claims: %w", err)
+	}
+	if err := validateJWTClaims(claims); err != nil {
+		return err
+	}
+
+	return validateJWTValidity(claims, time.Now())
+}
+
+func validateJWTParts(parts []string) error {
+	if len(parts) != 3 {
+		return fmt.Errorf("expected JWT compact serialization with 3 parts")
+	}
+	for _, part := range parts {
+		if part == "" {
+			return fmt.Errorf("JWT contains an empty part")
+		}
+	}
+	return nil
+}
+
+func validateJWTClaims(claims map[string]json.RawMessage) error {
+	nameID, ok, err := jwtStringClaim(claims, "nameid")
+	if err != nil {
+		return err
+	}
+	if !ok || nameID == "" {
+		return fmt.Errorf("JWT nameid claim is required")
+	}
+
+	role, ok, err := jwtStringClaim(claims, "role")
+	if err != nil {
+		return err
+	}
+	if !ok || role != tibiaFansiteTokenRole {
+		return fmt.Errorf("JWT role claim must be %s", tibiaFansiteTokenRole)
+	}
+	return nil
+}
+
+func validateJWTValidity(claims map[string]json.RawMessage, now time.Time) error {
+	if exp, ok, err := jwtNumericDate(claims, "exp"); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("JWT exp claim is required")
+	} else if !now.Before(exp) {
+		return fmt.Errorf("JWT is expired")
+	}
+
+	if notBefore, ok, err := jwtNumericDate(claims, "nbf"); err != nil {
+		return err
+	} else if ok && now.Before(notBefore) {
+		return fmt.Errorf("JWT is not valid yet")
+	}
+
+	return nil
+}
+
+func jwtStringClaim(claims map[string]json.RawMessage, key string) (string, bool, error) {
+	rawValue, ok := claims[key]
+	if !ok {
+		return "", false, nil
+	}
+
+	var value string
+	if err := json.Unmarshal(rawValue, &value); err != nil {
+		return "", false, fmt.Errorf("JWT %s claim must be a string", key)
+	}
+
+	return value, true, nil
+}
+
+func decodeJWTPart(part string, target any) error {
+	decoded, err := base64.RawURLEncoding.DecodeString(part)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(decoded, target)
+}
+
+func jwtNumericDate(claims map[string]json.RawMessage, key string) (time.Time, bool, error) {
+	rawValue, ok := claims[key]
+	if !ok {
+		return time.Time{}, false, nil
+	}
+
+	var number json.Number
+	if err := json.Unmarshal(rawValue, &number); err != nil {
+		return time.Time{}, false, fmt.Errorf("JWT %s claim must be a numeric date", key)
+	}
+
+	seconds, err := number.Int64()
+	if err != nil {
+		return time.Time{}, false, fmt.Errorf("JWT %s claim must be a numeric date", key)
+	}
+
+	return time.Unix(seconds, 0), true, nil
 }
 
 // TibiaDataConvertValuesWithK func - convert price strings that contain k, kk or more to 3x0
