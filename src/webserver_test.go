@@ -303,6 +303,77 @@ func TestErrorHandler(t *testing.T) {
 	assert.Equal(http.StatusBadGateway, w.Code)
 }
 
+func TestTibiaDataJSONDataCollector(t *testing.T) {
+	prevToken := TibiaFansiteToken
+	t.Cleanup(func() { TibiaFansiteToken = prevToken })
+
+	t.Run("missing token", func(t *testing.T) {
+		assert := assert.New(t)
+		TibiaFansiteToken = ""
+
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: "https://example.invalid"})
+		assert.Empty(body)
+		if assert.Error(err) {
+			assert.Contains(err.Error(), "missing TibiaFansiteToken")
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		assert := assert.New(t)
+		var gotAuth string
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotAuth = r.Header.Get("Authorization")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"characterGameInformation":{"characterName":"Test"}}`))
+		}))
+		defer server.Close()
+
+		TibiaFansiteToken = "test-token"
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		assert.NoError(err)
+		assert.Equal(`{"characterGameInformation":{"characterName":"Test"}}`, body)
+		assert.Equal("Bearer test-token", gotAuth)
+	})
+
+	t.Run("forbidden", func(t *testing.T) {
+		assert := assert.New(t)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		}))
+		defer server.Close()
+
+		TibiaFansiteToken = "test-token"
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		assert.Empty(body)
+		assert.ErrorIs(err, validation.ErrStatusForbidden)
+	})
+
+	t.Run("unknown status", func(t *testing.T) {
+		assert := assert.New(t)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer server.Close()
+
+		TibiaFansiteToken = "test-token"
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		assert.Empty(body)
+		assert.ErrorIs(err, validation.ErrStatusUnknown)
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		assert := assert.New(t)
+
+		TibiaFansiteToken = "test-token"
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: "http://127.0.0.1:0"})
+		assert.Empty(body)
+		assert.Error(err)
+	})
+}
+
 func TestTibiaCharactersCharacterUsesHTMLURLWhenFansiteDisabled(t *testing.T) {
 	assert := assert.New(t)
 	prev := TibiaFansiteAPI
