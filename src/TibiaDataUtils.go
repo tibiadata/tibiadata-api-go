@@ -261,13 +261,8 @@ func validateTibiaFansiteToken(token string) error {
 	}
 
 	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return fmt.Errorf("expected JWT compact serialization with 3 parts")
-	}
-	for _, part := range parts {
-		if part == "" {
-			return fmt.Errorf("JWT contains an empty part")
-		}
+	if err := validateJWTParts(parts); err != nil {
+		return err
 	}
 
 	var header struct {
@@ -284,18 +279,45 @@ func validateTibiaFansiteToken(token string) error {
 	if err := decodeJWTPart(parts[1], &claims); err != nil {
 		return fmt.Errorf("invalid JWT claims: %w", err)
 	}
-	if nameID, ok, err := jwtStringClaim(claims, "nameid"); err != nil {
+	if err := validateJWTClaims(claims); err != nil {
 		return err
-	} else if !ok || nameID == "" {
-		return fmt.Errorf("JWT nameid claim is required")
-	}
-	if role, ok, err := jwtStringClaim(claims, "role"); err != nil {
-		return err
-	} else if !ok || role != tibiaFansiteTokenRole {
-		return fmt.Errorf("JWT role claim must be %s", tibiaFansiteTokenRole)
 	}
 
-	now := time.Now()
+	return validateJWTValidity(claims, time.Now())
+}
+
+func validateJWTParts(parts []string) error {
+	if len(parts) != 3 {
+		return fmt.Errorf("expected JWT compact serialization with 3 parts")
+	}
+	for _, part := range parts {
+		if part == "" {
+			return fmt.Errorf("JWT contains an empty part")
+		}
+	}
+	return nil
+}
+
+func validateJWTClaims(claims map[string]json.RawMessage) error {
+	nameID, ok, err := jwtStringClaim(claims, "nameid")
+	if err != nil {
+		return err
+	}
+	if !ok || nameID == "" {
+		return fmt.Errorf("JWT nameid claim is required")
+	}
+
+	role, ok, err := jwtStringClaim(claims, "role")
+	if err != nil {
+		return err
+	}
+	if !ok || role != tibiaFansiteTokenRole {
+		return fmt.Errorf("JWT role claim must be %s", tibiaFansiteTokenRole)
+	}
+	return nil
+}
+
+func validateJWTValidity(claims map[string]json.RawMessage, now time.Time) error {
 	if exp, ok, err := jwtNumericDate(claims, "exp"); err != nil {
 		return err
 	} else if !ok {
