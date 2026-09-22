@@ -1209,6 +1209,7 @@ func containsCreaturesWithOf(str string) bool {
 		"sword of vengeance",
 		"symbol of fear",
 		"symbol of hatred",
+		"symbol of pain",
 		"tentacle of the deep terror",
 		"the book of death",
 		"the book of secrets",

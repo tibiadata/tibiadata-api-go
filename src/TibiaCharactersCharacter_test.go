@@ -310,6 +310,67 @@ func TestCharacterMightyTroll(t *testing.T) {
 	}
 }
 
+// TestCharacterImBow verifies that creature names containing "of" are not
+// incorrectly split into a summon and a name. Regression test for #737.
+func TestCharacterImBow(t *testing.T) {
+	testCases := []struct {
+		name           string
+		fixture        string
+		url            string
+		expectedName   string
+		expectedDeaths int
+		expectedLevel  int
+		expectedKiller Killers
+	}{
+		{
+			name:           "html",
+			fixture:        "testdata/characters/Im Bow.html",
+			url:            "https://www.tibia.com/community/?subtopic=characters&name=Im+Bow",
+			expectedName:   "Im Bow",
+			expectedDeaths: 9,
+			expectedLevel:  481,
+			expectedKiller: Killers{Name: "symbol of pain"},
+		},
+		{
+			name:           "json",
+			fixture:        "testdata/characters/Im Bow.json",
+			url:            "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Im%20Bow",
+			expectedName:   "Im Bow",
+			expectedDeaths: 9,
+			expectedLevel:  481,
+			expectedKiller: Killers{Name: "symbol of pain"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			file, err := static.TestFiles.Open(tc.fixture)
+			if err != nil {
+				t.Fatalf("file opening error: %s", err)
+			}
+			defer file.Close()
+
+			data, err := io.ReadAll(file)
+			if err != nil {
+				t.Fatalf("file reading error: %s", err)
+			}
+
+			characterResponse, err := TibiaCharactersCharacterImpl(string(data), tc.url)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			character := characterResponse.Character
+			assert.Equal(t, tc.expectedName, character.CharacterInfo.Name)
+			assert.Len(t, character.Deaths, tc.expectedDeaths)
+			death := character.Deaths[4]
+			assert.Equal(t, tc.expectedLevel, death.Level)
+			assert.Equal(t, []Killers{tc.expectedKiller}, death.Killers)
+			assert.Empty(t, death.Assists)
+		})
+	}
+}
+
 func TestNumber1(t *testing.T) {
 	file, err := static.TestFiles.Open("testdata/characters/Darkside Rafa.html")
 	if err != nil {
