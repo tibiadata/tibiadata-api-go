@@ -10,7 +10,7 @@ replace github.com/tibiadata/tibiadata-api-go/src/validation => ./src/validation
 
 require (
 	github.com/PuerkitoBio/goquery v1.13.0
-	github.com/gin-contrib/gzip v1.2.7
+	github.com/gin-contrib/gzip v1.2.8
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/mantyr/go-charset v0.0.0-20160510214718-44d054d82c4a
