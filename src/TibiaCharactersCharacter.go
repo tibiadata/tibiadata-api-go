@@ -20,6 +20,10 @@ import (
 	//"time"
 )
 
+// tradedSuffix is the marker appended to a killer's name to indicate the
+// character was traded, shared by the HTML and fansite (JSON) parsing paths.
+const tradedSuffix = " (traded)"
+
 type fansiteAPICharacterResponse struct {
 	CharacterGameInformation    fansiteAPICharacterGameInformation     `json:"characterGameInformation"`
 	CharacterDeathsData         *fansiteAPICharacterDeathsData         `json:"characterDeathsData"`
@@ -213,7 +217,7 @@ func fansiteFormatKillerName(k Killers) string {
 	}
 
 	if k.Traded {
-		name += " (traded)"
+		name += tradedSuffix
 	}
 
 	return name
@@ -529,7 +533,6 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 	var (
 		// local strings used in this function
 		localDivQueryString = ".TableContentContainer tr"
-		localTradedString   = " (traded)"
 
 		// Declaring vars for later use..
 		CharacterInfoData      CharacterInfo
@@ -585,9 +588,9 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 						CharacterInfoData.Name = Tmp2[0]
 						CharacterInfoData.DeletionDate = TibiaDataDatetime(strings.TrimSpace(Tmp2[1]))
 					}
-					if strings.Contains(RowData, localTradedString) {
+					if strings.Contains(RowData, tradedSuffix) {
 						CharacterInfoData.Traded = true
-						CharacterInfoData.Name = strings.Replace(CharacterInfoData.Name, localTradedString, "", -1)
+						CharacterInfoData.Name = strings.Replace(CharacterInfoData.Name, tradedSuffix, "", -1)
 					}
 				case "Former Names:":
 					CharacterInfoData.FormerNames = strings.Split(RowData, ", ")
@@ -1069,9 +1072,9 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					world := CharacterListHTML[worldIdx:endWorldIdx]
 
 					var tmpTraded bool
-					if strings.Contains(tmpCharName, localTradedString) {
+					if strings.Contains(tmpCharName, tradedSuffix) {
 						tmpTraded = true
-						tmpCharName = strings.ReplaceAll(tmpCharName, localTradedString, "")
+						tmpCharName = strings.ReplaceAll(tmpCharName, tradedSuffix, "")
 					}
 
 					// If this character is the main character of the account
@@ -1166,18 +1169,15 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 // TibiaDataParseKiller func - insert a html string and get the killers back
 func TibiaDataParseKiller(data string) (string, bool, bool, string) {
 	var (
-		// local strings used in this function
-		localTradedString = " (traded)"
-
 		isPlayer, isTraded bool
 		theSummon          string
 	)
 
 	// check if killer is a traded player
-	if strings.Contains(data, localTradedString) {
+	if strings.Contains(data, tradedSuffix) {
 		isPlayer = true
 		isTraded = true
-		data = strings.ReplaceAll(data, localTradedString, "")
+		data = strings.ReplaceAll(data, tradedSuffix, "")
 	}
 
 	// check if killer is a player
