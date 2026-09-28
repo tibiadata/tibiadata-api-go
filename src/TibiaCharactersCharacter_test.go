@@ -4716,6 +4716,61 @@ func TestSmallName(t *testing.T) {
 	assert.EqualValues(validation.ErrorCharacterNameTooSmall.Error(), jerr.Information.Status.Message)
 }
 
+// TestCharacterJSONTitleDefaultsToNone verifies that the fansite API (JSON)
+// parsing path defaults an empty/missing character title to "None", matching
+// the HTML parsing path. Regression test for a JSON/HTML output mismatch.
+func TestCharacterJSONTitleDefaultsToNone(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/characters/Zugspitze Housekeeper.json")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("file reading error: %s", err)
+	}
+
+	response, err := TibiaCharactersCharacterImpl(string(data), "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Zugspitze%20Housekeeper")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "None", response.Character.CharacterInfo.Title)
+}
+
+// TestCharacterJSONDeathAssistsEmptyNotNil verifies that the fansite API
+// (JSON) parsing path represents a death with no assists as an empty slice,
+// matching the HTML parsing path, so it serializes to "[]" instead of
+// "null". Regression test for a JSON/HTML output mismatch.
+func TestCharacterJSONDeathAssistsEmptyNotNil(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/characters/Igvis.json")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("file reading error: %s", err)
+	}
+
+	response, err := TibiaCharactersCharacterImpl(string(data), "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Igvis")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	death := response.Character.Deaths[0]
+	assert.NotNil(t, death.Assists)
+	assert.Empty(t, death.Assists)
+
+	out, err := json.Marshal(death)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Contains(t, string(out), `"assists":[]`)
+}
+
 func TestInvalidName(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

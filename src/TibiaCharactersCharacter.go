@@ -321,7 +321,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 			var achievements []Achievements
 			if fansiteData.CharacterAdminInformation != nil {
 				characterInfo.Title = "None"
-				if fansiteData.CharacterAdminInformation.CharacterTitle != nil {
+				if fansiteData.CharacterAdminInformation.CharacterTitle != nil && *fansiteData.CharacterAdminInformation.CharacterTitle != "" {
 					characterInfo.Title = *fansiteData.CharacterAdminInformation.CharacterTitle
 				}
 				characterInfo.UnlockedTitles = fansiteData.CharacterAdminInformation.CharacterTitleCount
