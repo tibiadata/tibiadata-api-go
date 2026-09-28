@@ -43,6 +43,7 @@ const (
 	cacheMaxAgeHouses     = 300 * time.Second
 	cacheMaxAgeNews       = 900 * time.Second
 	cacheMaxAgeWorlds     = 60 * time.Second
+	cacheControlHeader    = "Cache-Control"
 )
 
 // initTibiaDataClient creates the shared resty client with static configuration.
@@ -129,30 +130,9 @@ func (m *TibiaDataCacheMetadata) recordUpstreamHeaders(headers http.Header) {
 		return
 	}
 
-	var age time.Duration
-	source := ""
-	hasAge := false
-	if ageHeader := headers.Get("Age"); ageHeader != "" {
-		if seconds, err := strconv.ParseInt(strings.TrimSpace(ageHeader), 10, 64); err == nil && seconds >= 0 {
-			hasAge = true
-			source = "Age"
-			maxDurationSeconds := int64((1<<63 - 1) / int64(time.Second))
-			if seconds > maxDurationSeconds {
-				age = time.Duration(1<<63 - 1)
-			} else {
-				age = time.Duration(seconds) * time.Second
-			}
-		}
-	}
-	if !hasAge {
-		date, dateErr := http.ParseTime(headers.Get("Date"))
-		lastModified, lastModifiedErr := http.ParseTime(headers.Get("Last-Modified"))
-		if dateErr == nil && lastModifiedErr == nil {
-			source = "Date-Last-Modified"
-		}
-		if source != "" && date.After(lastModified) {
-			age = date.Sub(lastModified)
-		}
+	age, source, ok := upstreamResponseAge(headers)
+	if !ok {
+		return
 	}
 
 	m.mu.Lock()
@@ -161,6 +141,35 @@ func (m *TibiaDataCacheMetadata) recordUpstreamHeaders(headers http.Header) {
 		m.age = age
 		m.source = source
 	}
+}
+
+func upstreamResponseAge(headers http.Header) (time.Duration, string, bool) {
+	if age, ok := parseAgeHeader(headers.Get("Age")); ok {
+		return age, "Age", true
+	}
+	return lastModifiedAge(headers)
+}
+
+func parseAgeHeader(value string) (time.Duration, bool) {
+	seconds, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+	if err != nil || seconds < 0 {
+		return 0, false
+	}
+
+	maxDurationSeconds := int64((1<<63 - 1) / int64(time.Second))
+	if seconds > maxDurationSeconds {
+		return time.Duration(1<<63 - 1), true
+	}
+	return time.Duration(seconds) * time.Second, true
+}
+
+func lastModifiedAge(headers http.Header) (time.Duration, string, bool) {
+	date, dateErr := http.ParseTime(headers.Get("Date"))
+	lastModified, lastModifiedErr := http.ParseTime(headers.Get("Last-Modified"))
+	if dateErr != nil || lastModifiedErr != nil || !date.After(lastModified) {
+		return 0, "", false
+	}
+	return date.Sub(lastModified), "Date-Last-Modified", true
 }
 
 func (m *TibiaDataCacheMetadata) remainingCacheAge(maxAge time.Duration) time.Duration {
@@ -302,13 +311,13 @@ func runWebServer() {
 		// Tibia highscores
 		v4.GET("/highscores/:world", func(c *gin.Context) {
 			if TibiaDataCacheAwareness {
-				c.Header("Cache-Control", tibiaDataCacheControlValue(cacheMaxAgeHighscores))
+				c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
 			}
 			c.Redirect(http.StatusMovedPermanently, v4.BasePath()+"/highscores/"+c.Param("world")+"/experience/"+TibiaDataDefaultVoc+"/1")
 		})
 		v4.GET("/highscores/:world/:category", func(c *gin.Context) {
 			if TibiaDataCacheAwareness {
-				c.Header("Cache-Control", tibiaDataCacheControlValue(cacheMaxAgeHighscores))
+				c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
 			}
 			c.Redirect(http.StatusMovedPermanently, v4.BasePath()+"/highscores/"+c.Param("world")+"/"+c.Param("category")+"/"+TibiaDataDefaultVoc+"/1")
 		})
@@ -1417,9 +1426,9 @@ func TibiaDataAPIHandleCachedResponse(c *gin.Context, name string, data interfac
 		remaining := metadata.remainingCacheAge(maxAge)
 		remainingSeconds := int64(remaining / time.Second)
 		if remaining < time.Second {
-			c.Header("Cache-Control", "no-store")
+			c.Header(cacheControlHeader, "no-store")
 		} else {
-			c.Header("Cache-Control", tibiaDataCacheControlValue(remaining))
+			c.Header(cacheControlHeader, tibiaDataCacheControlValue(remaining))
 		}
 		if TibiaDataDebug {
 			upstreamAge, ageSource := metadata.ageDetails()
