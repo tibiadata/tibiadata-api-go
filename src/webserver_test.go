@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/tibiadata/tibiadata-api-go/src/static"
 	"github.com/tibiadata/tibiadata-api-go/src/validation"
 )
 
@@ -176,32 +178,6 @@ func TestFakeToUpCodeCoverage(t *testing.T) {
 	assert.False(false, tibiaNewslistArchiveDays())
 	assert.False(false, tibiaNewslistLatest())
 
-	// w = httptest.NewRecorder()
-	// c, _ = gin.CreateTestContext(w)
-
-	// c.Params = []gin.Param{
-	// 	{
-	// 		Key:   "days",
-	// 		Value: "90",
-	// 	},
-	// }
-
-	// tibiaNewslist(c)
-	// assert.Equal(http.StatusOK, w.Code)
-
-	// w = httptest.NewRecorder()
-	// c, _ = gin.CreateTestContext(w)
-
-	// c.Params = []gin.Param{
-	// 	{
-	// 		Key:   "news_id",
-	// 		Value: "6607",
-	// 	},
-	// }
-
-	// tibiaNews(c)
-	// assert.Equal(http.StatusOK, w.Code)
-
 	w = httptest.NewRecorder()
 	c, _ = gin.CreateTestContext(w)
 
@@ -303,6 +279,104 @@ func TestErrorHandler(t *testing.T) {
 	c, _ = gin.CreateTestContext(w)
 	TibiaDataErrorHandler(c, validation.ErrStatusUnknown, http.StatusConflict)
 	assert.Equal(http.StatusBadGateway, w.Code)
+}
+
+func readNewsFixture(t *testing.T, path string) []byte {
+	t.Helper()
+
+	file, err := static.TestFiles.Open(path)
+	if err != nil {
+		t.Fatalf("open news fixture %q: %v", path, err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("read news fixture %q: %v", path, err)
+	}
+	return data
+}
+
+func TestTibiaNewsHandlers(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	newslistFixture := readNewsFixture(t, "testdata/news/newslist.html")
+	newsFixture := readNewsFixture(t, "testdata/news/archive/6512.html")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("id") == "6512" {
+			assert.Equal(t, http.MethodGet, r.Method)
+			_, _ = w.Write(newsFixture)
+			return
+		}
+
+		assert.Equal(t, http.MethodPost, r.Method)
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		assert.Equal(t, "article", r.PostForm.Get("filter_article"))
+		assert.Equal(t, "news", r.PostForm.Get("filter_news"))
+		_, _ = w.Write(newslistFixture)
+	}))
+	t.Cleanup(server.Close)
+
+	previousProxyDomain := TibiaDataProxyDomain
+	TibiaDataProxyDomain = server.URL + "/"
+	t.Cleanup(func() { TibiaDataProxyDomain = previousProxyDomain })
+
+	t.Run("news list", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/v4/news/archive/90", nil)
+		c.Params = gin.Params{{Key: "days", Value: "90"}}
+
+		tibiaNewslist(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response NewsListResponse
+		if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &response)) {
+			assert.NotEmpty(t, response.News)
+			assert.Equal(t, 6529, response.News[0].ID)
+		}
+	})
+
+	t.Run("news article", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/v4/news/id/6512", nil)
+		c.Params = gin.Params{{Key: "news_id", Value: "6512"}}
+
+		tibiaNews(c)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		var response NewsResponse
+		if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &response)) {
+			assert.Equal(t, 6512, response.News.ID)
+			assert.Equal(t, "ticker", response.News.Type)
+		}
+	})
+}
+
+func TestTibiaNewsHandlersReturnBadGatewayOnUpstreamFailure(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	previousProxyDomain := TibiaDataProxyDomain
+	TibiaDataProxyDomain = server.URL + "/"
+	t.Cleanup(func() { TibiaDataProxyDomain = previousProxyDomain })
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v4/news/id/6512", nil)
+	c.Params = gin.Params{{Key: "news_id", Value: "6512"}}
+
+	tibiaNews(c)
+
+	assert.Equal(t, http.StatusBadGateway, w.Code)
 }
 
 func TestTibiaDataJSONDataCollector(t *testing.T) {
