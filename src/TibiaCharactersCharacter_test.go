@@ -625,6 +625,13 @@ func TestFansiteDeathReason(t *testing.T) {
 	}
 }
 
+// TestFansiteWithArticleEmptyName verifies the defensive guard in
+// fansiteWithArticle: an empty name is returned as-is, without a leading
+// "a "/"an " article being added.
+func TestFansiteWithArticleEmptyName(t *testing.T) {
+	assert.Equal(t, "", fansiteWithArticle(""))
+}
+
 // TestCharacterLeataClanReasonMatchesHTML compares the computed JSON death
 // reasons against the literal reasons scraped from tibia.com's HTML for the
 // same character, including deaths where the killer has a "remark" (summon),
