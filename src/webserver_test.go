@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -400,6 +401,8 @@ func TestTibiaDataCacheMetadata(t *testing.T) {
 		date         = "Mon, 28 Sep 2026 19:47:06 GMT"
 		lastModified = "Mon, 28 Sep 2026 19:46:06 GMT"
 	)
+	assert.Equal(t, time.Duration(0), (&TibiaDataCacheMetadata{}).remainingCacheAge(0))
+
 	t.Run("uses Age when present", func(t *testing.T) {
 		metadata := &TibiaDataCacheMetadata{}
 		metadata.recordUpstreamHeaders(http.Header{
@@ -450,6 +453,66 @@ func TestTibiaDataCacheMetadata(t *testing.T) {
 		metadata.recordUpstreamHeaders(http.Header{"Age": []string{"400"}})
 
 		assert.Equal(t, time.Duration(0), metadata.remainingCacheAge(300*time.Second))
+	})
+
+	t.Run("keeps the greatest age from multiple upstream responses", func(t *testing.T) {
+		metadata := &TibiaDataCacheMetadata{}
+		metadata.recordUpstreamHeaders(http.Header{"Age": []string{"120"}})
+		metadata.recordUpstreamHeaders(http.Header{"Age": []string{"60"}})
+
+		age, source := metadata.ageDetails()
+		assert.Equal(t, 120*time.Second, age)
+		assert.Equal(t, "Age", source)
+	})
+
+	t.Run("ignores invalid Last-Modified values", func(t *testing.T) {
+		metadata := &TibiaDataCacheMetadata{}
+		metadata.recordUpstreamHeaders(http.Header{
+			"Date":          []string{date},
+			"Last-Modified": []string{"not a date"},
+		})
+
+		age, source := metadata.ageDetails()
+		assert.Zero(t, age)
+		assert.Equal(t, "none", source)
+	})
+}
+
+func TestUpstreamResponseAgeParsing(t *testing.T) {
+	maxDurationSeconds := int64((1<<63 - 1) / int64(time.Second))
+	tests := []struct {
+		name      string
+		value     string
+		wantAge   time.Duration
+		wantValid bool
+	}{
+		{name: "empty", wantValid: false},
+		{name: "negative", value: "-1", wantValid: false},
+		{name: "malformed", value: "one", wantValid: false},
+		{name: "valid zero", value: "0", wantAge: 0, wantValid: true},
+		{name: "valid seconds", value: "12", wantAge: 12 * time.Second, wantValid: true},
+		{name: "saturates overflow", value: strconv.FormatInt(maxDurationSeconds+1, 10), wantAge: time.Duration(1<<63 - 1), wantValid: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			age, ok := parseAgeHeader(test.value)
+			assert.Equal(t, test.wantValid, ok)
+			assert.Equal(t, test.wantAge, age)
+		})
+	}
+
+	t.Run("rejects missing or inverted date headers", func(t *testing.T) {
+		for _, headers := range []http.Header{
+			{},
+			{"Date": []string{"not a date"}, "Last-Modified": []string{"Mon, 28 Sep 2026 19:46:06 GMT"}},
+			{"Date": []string{"Mon, 28 Sep 2026 19:46:06 GMT"}, "Last-Modified": []string{"Mon, 28 Sep 2026 19:47:06 GMT"}},
+		} {
+			age, source, ok := lastModifiedAge(headers)
+			assert.Zero(t, age)
+			assert.Empty(t, source)
+			assert.False(t, ok)
+		}
 	})
 }
 
@@ -506,6 +569,35 @@ func TestTibiaDataAPIHandleCachedResponse(t *testing.T) {
 	TibiaDataCacheAwareness = false
 	TibiaDataAPIHandleCachedResponse(c, "test", gin.H{"ok": true}, 300*time.Second, nil)
 	assert.Empty(t, w.Header().Get("Cache-Control"))
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	TibiaDataCacheAwareness = true
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v4/character/Test", nil)
+	TibiaDataAPIHandleCachedResponse(c, "test", gin.H{"ok": true}, 0, nil)
+	assert.Empty(t, w.Header().Get("Cache-Control"))
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	TibiaDataAPIHandleCachedResponse(nil, "test", gin.H{"ok": true}, 300*time.Second, nil)
+}
+
+func TestTibiaDataAPIHandleCachedResponseDebugLogging(t *testing.T) {
+	previousDebug := TibiaDataDebug
+	previousMode := gin.Mode()
+	TibiaDataDebug = true
+	gin.SetMode(gin.TestMode)
+	t.Cleanup(func() {
+		TibiaDataDebug = previousDebug
+		gin.SetMode(previousMode)
+	})
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v4/character/Test", nil)
+	TibiaDataAPIHandleCachedResponse(c, "test", gin.H{"ok": true}, 300*time.Second, nil)
+
+	assert.Equal(t, "public, max-age=300, s-maxage=300", w.Header().Get(cacheControlHeader))
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
