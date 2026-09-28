@@ -295,8 +295,9 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 				deathsTruncated = fansiteData.CharacterDeathsData.TooMany
 				for _, d := range fansiteData.CharacterDeathsData.Deaths {
 					death := Deaths{
-						Time:  fansiteUnixToDatetime(d.Date),
-						Level: d.Level,
+						Time:    fansiteUnixToDatetime(d.Date),
+						Level:   d.Level,
+						Assists: []Killers{},
 					}
 					for _, murderer := range d.Murderers {
 						k := Killers{
@@ -319,6 +320,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 
 			var achievements []Achievements
 			if fansiteData.CharacterAdminInformation != nil {
+				characterInfo.Title = "None"
 				if fansiteData.CharacterAdminInformation.CharacterTitle != nil {
 					characterInfo.Title = *fansiteData.CharacterAdminInformation.CharacterTitle
 				}
