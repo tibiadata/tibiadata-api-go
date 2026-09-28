@@ -120,6 +120,8 @@ You should consider to add a layer in front of this application, so you can do c
 
 We do so at least by using [Kong](https://github.com/Kong/kong) API Gateway, which solves features like caching, rate-limiting, authentication and more.
 
+Successful data responses include a `Cache-Control` header with endpoint-specific cache lifetimes: characters and houses 300 seconds, guilds 120 seconds, highscores and news 900 seconds, and worlds 60 seconds. Both `max-age` and `s-maxage` use that lifetime, reduced by the upstream `Age` header when present. If `Age` is missing or invalid, the application falls back to the difference between upstream `Date` and `Last-Modified` (used by the Fansite API); when that cannot be calculated, it starts from the configured lifetime. If no lifetime remains, the response is marked `Cache-Control: no-store`.
+
 ## API documentation
 
 The hosted API documentation for our [api.tibiadata.com](https://api.tibiadata.com) service can be viewd at [docs.tibiadata.com](https://docs.tibiadata.com).
