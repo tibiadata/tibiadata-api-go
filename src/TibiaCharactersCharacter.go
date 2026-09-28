@@ -20,6 +20,10 @@ import (
 	//"time"
 )
 
+// tradedSuffix is the marker appended to a killer's name to indicate the
+// character was traded, shared by the HTML and fansite (JSON) parsing paths.
+const tradedSuffix = " (traded)"
+
 type fansiteAPICharacterResponse struct {
 	CharacterGameInformation    fansiteAPICharacterGameInformation     `json:"characterGameInformation"`
 	CharacterDeathsData         *fansiteAPICharacterDeathsData         `json:"characterDeathsData"`
@@ -125,6 +129,115 @@ func fansiteUnixToDate(ts int64) string {
 		return ""
 	}
 	return time.Unix(ts, 0).UTC().Format("2006-01-02")
+}
+
+// fansiteDeathReason computes a human-readable death reason sentence for the
+// fansite API (JSON) parsing path, since the fansite API provides no such
+// field directly. This mirrors the format used by the HTML parsing path
+// (which scrapes the literal sentence from tibia.com), so that the "reason"
+// field is populated consistently regardless of the parsing path used.
+//
+// The verb is chosen based on the number of player killers (assists don't
+// count), following Tibia's convention: Died (0), Killed (1-4), Slain (5-9),
+// Crushed (10-14), Eliminated (15-19), Annihilated (20+). Tibia additionally
+// randomizes verb synonyms and omits the a/an article for certain unique
+// monsters; neither is derivable from the fansite API data, so this is a
+// best-effort, deterministic reconstruction rather than a byte-for-byte
+// match of the scraped HTML text.
+func fansiteDeathReason(level int, killers []Killers, assists []Killers) string {
+	playerKillers := 0
+	for _, k := range killers {
+		if k.Player {
+			playerKillers++
+		}
+	}
+
+	var verb string
+	switch {
+	case playerKillers == 0:
+		verb = "Died"
+	case playerKillers <= 4:
+		verb = "Killed"
+	case playerKillers <= 9:
+		verb = "Slain"
+	case playerKillers <= 14:
+		verb = "Crushed"
+	case playerKillers <= 19:
+		verb = "Eliminated"
+	default:
+		verb = "Annihilated"
+	}
+
+	var b strings.Builder
+	b.WriteString(verb)
+	fmt.Fprintf(&b, " at Level %d", level)
+	if len(killers) > 0 {
+		b.WriteString(" by ")
+		b.WriteString(fansiteJoinKillerNames(killers))
+	}
+	b.WriteString(".")
+	if len(assists) > 0 {
+		b.WriteString(" Assisted by ")
+		b.WriteString(fansiteJoinKillerNames(assists))
+		b.WriteString(".")
+	}
+
+	return b.String()
+}
+
+// fansiteJoinKillerNames joins killer/assist display names in Tibia's list
+// style: comma-separated, with " and " (no Oxford comma) before the last one.
+func fansiteJoinKillerNames(list []Killers) string {
+	names := make([]string, len(list))
+	for i, k := range list {
+		names[i] = fansiteFormatKillerName(k)
+	}
+
+	if len(names) == 1 {
+		return names[0]
+	}
+
+	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
+}
+
+// fansiteFormatKillerName formats a single killer/assist display name,
+// prefixing a plain creature (non-player, non-summon) name with "a"/"an" and
+// appending "(traded)" when applicable. Summoned creatures ("<creature> of
+// <owner>") are left without an article, matching how tibia.com displays
+// them in the vast majority of cases.
+func fansiteFormatKillerName(k Killers) string {
+	var name string
+	switch {
+	case k.Summon != "":
+		name = fmt.Sprintf("%s of %s", k.Summon, k.Name)
+	case !k.Player:
+		name = fansiteWithArticle(k.Name)
+	default:
+		name = k.Name
+	}
+
+	if k.Traded {
+		name += tradedSuffix
+	}
+
+	return name
+}
+
+// fansiteWithArticle prefixes a name with "a" or "an" based on a simple
+// vowel heuristic. Tibia omits the article for certain unique monsters, but
+// that distinction isn't derivable from the fansite API data.
+func fansiteWithArticle(name string) string {
+	if name == "" {
+		return name
+	}
+
+	r, _ := utf8.DecodeRuneInString(name)
+	article := "a"
+	if strings.ContainsRune("aeiouAEIOU", r) {
+		article = "an"
+	}
+
+	return article + " " + name
 }
 
 func tibiaDataLooksLikeJSON(content string) bool {
@@ -295,8 +408,10 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 				deathsTruncated = fansiteData.CharacterDeathsData.TooMany
 				for _, d := range fansiteData.CharacterDeathsData.Deaths {
 					death := Deaths{
-						Time:  fansiteUnixToDatetime(d.Date),
-						Level: d.Level,
+						Time:    fansiteUnixToDatetime(d.Date),
+						Level:   d.Level,
+						Killers: []Killers{},
+						Assists: []Killers{},
 					}
 					for _, murderer := range d.Murderers {
 						k := Killers{
@@ -313,13 +428,15 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 							death.Killers = append(death.Killers, k)
 						}
 					}
+					death.Reason = fansiteDeathReason(death.Level, death.Killers, death.Assists)
 					deaths = append(deaths, death)
 				}
 			}
 
 			var achievements []Achievements
 			if fansiteData.CharacterAdminInformation != nil {
-				if fansiteData.CharacterAdminInformation.CharacterTitle != nil {
+				characterInfo.Title = "None"
+				if fansiteData.CharacterAdminInformation.CharacterTitle != nil && *fansiteData.CharacterAdminInformation.CharacterTitle != "" {
 					characterInfo.Title = *fansiteData.CharacterAdminInformation.CharacterTitle
 				}
 				characterInfo.UnlockedTitles = fansiteData.CharacterAdminInformation.CharacterTitleCount
@@ -416,7 +533,6 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 	var (
 		// local strings used in this function
 		localDivQueryString = ".TableContentContainer tr"
-		localTradedString   = " (traded)"
 
 		// Declaring vars for later use..
 		CharacterInfoData      CharacterInfo
@@ -472,9 +588,9 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 						CharacterInfoData.Name = Tmp2[0]
 						CharacterInfoData.DeletionDate = TibiaDataDatetime(strings.TrimSpace(Tmp2[1]))
 					}
-					if strings.Contains(RowData, localTradedString) {
+					if strings.Contains(RowData, tradedSuffix) {
 						CharacterInfoData.Traded = true
-						CharacterInfoData.Name = strings.Replace(CharacterInfoData.Name, localTradedString, "", -1)
+						CharacterInfoData.Name = strings.Replace(CharacterInfoData.Name, tradedSuffix, "", -1)
 					}
 				case "Former Names:":
 					CharacterInfoData.FormerNames = strings.Split(RowData, ", ")
@@ -956,9 +1072,9 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					world := CharacterListHTML[worldIdx:endWorldIdx]
 
 					var tmpTraded bool
-					if strings.Contains(tmpCharName, localTradedString) {
+					if strings.Contains(tmpCharName, tradedSuffix) {
 						tmpTraded = true
-						tmpCharName = strings.ReplaceAll(tmpCharName, localTradedString, "")
+						tmpCharName = strings.ReplaceAll(tmpCharName, tradedSuffix, "")
 					}
 
 					// If this character is the main character of the account
@@ -1053,18 +1169,15 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 // TibiaDataParseKiller func - insert a html string and get the killers back
 func TibiaDataParseKiller(data string) (string, bool, bool, string) {
 	var (
-		// local strings used in this function
-		localTradedString = " (traded)"
-
 		isPlayer, isTraded bool
 		theSummon          string
 	)
 
 	// check if killer is a traded player
-	if strings.Contains(data, localTradedString) {
+	if strings.Contains(data, tradedSuffix) {
 		isPlayer = true
 		isTraded = true
-		data = strings.ReplaceAll(data, localTradedString, "")
+		data = strings.ReplaceAll(data, tradedSuffix, "")
 	}
 
 	// check if killer is a player

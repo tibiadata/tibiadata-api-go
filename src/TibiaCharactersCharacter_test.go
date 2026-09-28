@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -480,6 +481,216 @@ func TestNumber2(t *testing.T) {
 	assert.False(offlineCharacter.Deleted)
 	assert.False(offlineCharacter.Main)
 	assert.False(offlineCharacter.Traded)
+}
+
+// TestCharacterJSONTitleDefaultsToNone verifies that the fansite API (JSON)
+// parsing path defaults an empty character title to "None", matching the
+// HTML parsing path exercised by TestNumber2. The JSON fixture is a newer
+// snapshot of the same account under its current name (Melecax), with
+// "Zugspitze Housekeeper" listed as a former name. Regression test for a
+// JSON/HTML output mismatch.
+func TestCharacterJSONTitleDefaultsToNone(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/characters/Zugspitze Housekeeper.json")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("file reading error: %s", err)
+	}
+
+	response, err := TibiaCharactersCharacterImpl(string(data), "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Zugspitze%20Housekeeper")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, "None", response.Character.CharacterInfo.Title)
+}
+
+// TestCharacterJSONDeathAssistsEmptyNotNil verifies that the fansite API
+// (JSON) parsing path represents a death with no assists as an empty slice,
+// matching the HTML parsing path, so it serializes to "[]" instead of
+// "null". Regression test for a JSON/HTML output mismatch.
+func TestCharacterJSONDeathAssistsEmptyNotNil(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/characters/Igvis.json")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("file reading error: %s", err)
+	}
+
+	response, err := TibiaCharactersCharacterImpl(string(data), "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Igvis")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	death := response.Character.Deaths[0]
+	assert.NotNil(t, death.Assists)
+	assert.Empty(t, death.Assists)
+
+	out, err := json.Marshal(death)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Contains(t, string(out), `"assists":[]`)
+}
+
+// TestFansiteDeathReason verifies that the fansite API (JSON) parsing path
+// computes a death reason sentence, since the fansite API provides no such
+// field, so it is populated consistently with the HTML parsing path.
+func TestFansiteDeathReason(t *testing.T) {
+	testCases := []struct {
+		name     string
+		level    int
+		killers  []Killers
+		assists  []Killers
+		expected string
+	}{
+		{
+			name:     "creature kill, no assists",
+			level:    264,
+			killers:  []Killers{{Name: "gazer spectre"}},
+			expected: "Died at Level 264 by a gazer spectre.",
+		},
+		{
+			name:     "creature kill starting with vowel",
+			level:    266,
+			killers:  []Killers{{Name: "ice golem"}},
+			expected: "Died at Level 266 by an ice golem.",
+		},
+		{
+			name:     "single player killer",
+			level:    268,
+			killers:  []Killers{{Name: "Riley No Hands", Player: true}},
+			expected: "Killed at Level 268 by Riley No Hands.",
+		},
+		{
+			name:  "five player killers is slain",
+			level: 240,
+			killers: []Killers{
+				{Name: "A", Player: true}, {Name: "B", Player: true}, {Name: "C", Player: true},
+				{Name: "D", Player: true}, {Name: "E", Player: true},
+			},
+			expected: "Slain at Level 240 by A, B, C, D and E.",
+		},
+		{
+			name:  "twenty player killers is annihilated",
+			level: 240,
+			killers: func() []Killers {
+				var k []Killers
+				for i := 0; i < 20; i++ {
+					k = append(k, Killers{Name: fmt.Sprintf("P%d", i), Player: true})
+				}
+				return k
+			}(),
+			expected: "Annihilated at Level 240 by P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15, P16, P17, P18 and P19.",
+		},
+		{
+			name:     "creature killer with player assists",
+			level:    259,
+			killers:  []Killers{{Name: "Duke Krule", Player: true}},
+			assists:  []Killers{{Name: "Mapius Akuno", Player: true}},
+			expected: "Killed at Level 259 by Duke Krule. Assisted by Mapius Akuno.",
+		},
+		{
+			name:     "traded killer",
+			level:    267,
+			killers:  []Killers{{Name: "Marchane kee", Player: true, Traded: true}},
+			expected: "Killed at Level 267 by Marchane kee (traded).",
+		},
+		{
+			name:     "summoned creature killer",
+			level:    597,
+			killers:  []Killers{{Name: "Fllockyy", Player: true, Summon: "paladin familiar"}},
+			expected: "Killed at Level 597 by paladin familiar of Fllockyy.",
+		},
+		{
+			name:     "assist only, no killers",
+			level:    968,
+			assists:  []Killers{{Name: "Pipoca Shaman", Player: true}},
+			expected: "Died at Level 968. Assisted by Pipoca Shaman.",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, fansiteDeathReason(tc.level, tc.killers, tc.assists))
+		})
+	}
+}
+
+// TestFansiteWithArticleEmptyName verifies the defensive guard in
+// fansiteWithArticle: an empty name is returned as-is, without a leading
+// "a "/"an " article being added.
+func TestFansiteWithArticleEmptyName(t *testing.T) {
+	assert.Equal(t, "", fansiteWithArticle(""))
+}
+
+// TestCharacterLeataClanReasonMatchesHTML compares the computed JSON death
+// reasons against the literal reasons scraped from tibia.com's HTML for the
+// same character, including deaths where the killer has a "remark" (summon),
+// to verify the two parsing paths produce equivalent output.
+//
+// tibia.com's death text randomizes the "a"/"an" article before non-player
+// creature killer names independently of the creature itself: the exact same
+// creature name is scraped both with and without the article across
+// different fixtures (e.g. "skeleton elite warrior" in Riley No Hands.html
+// vs Sergiozk.html). That randomness can't be derived from the fansite API,
+// so deaths[18] and deaths[19] ("Anmothra") are expected to mismatch only on
+// the article and are checked separately.
+func TestCharacterLeataClanReasonMatchesHTML(t *testing.T) {
+	readDeaths := func(fixture, url string) []Deaths {
+		file, err := static.TestFiles.Open(fixture)
+		if err != nil {
+			t.Fatalf("file opening error: %s", err)
+		}
+		defer file.Close()
+
+		data, err := io.ReadAll(file)
+		if err != nil {
+			t.Fatalf("file reading error: %s", err)
+		}
+
+		response, err := TibiaCharactersCharacterImpl(string(data), url)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return response.Character.Deaths
+	}
+
+	htmlDeaths := readDeaths("testdata/characters/Leata Clan.html", "https://www.tibia.com/community/?subtopic=characters&name=Leata+Clan")
+	jsonDeaths := readDeaths("testdata/characters/Leata Clan.json", "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Leata%20Clan")
+
+	assert.Equal(t, len(htmlDeaths), len(jsonDeaths))
+
+	// sanity check that the fixtures do exercise the "remark" (summon) field
+	sawSummon := false
+	for _, d := range jsonDeaths {
+		for _, k := range d.Killers {
+			if k.Summon != "" {
+				sawSummon = true
+			}
+		}
+	}
+	assert.True(t, sawSummon, "expected fixture to contain a death with a summoned killer")
+
+	knownArticleMismatchIdx := map[int]bool{18: true, 19: true}
+
+	for i := range htmlDeaths {
+		if knownArticleMismatchIdx[i] {
+			assert.Equal(t, "Died at Level "+fmt.Sprint(htmlDeaths[i].Level)+" by Anmothra.", htmlDeaths[i].Reason)
+			assert.Equal(t, "Died at Level "+fmt.Sprint(jsonDeaths[i].Level)+" by an Anmothra.", jsonDeaths[i].Reason)
+			continue
+		}
+		assert.Equal(t, htmlDeaths[i].Reason, jsonDeaths[i].Reason, "mismatch at death index %d", i)
+	}
 }
 
 func TestNumber3(t *testing.T) {
