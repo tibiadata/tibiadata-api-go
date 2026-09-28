@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -538,6 +539,90 @@ func TestCharacterJSONDeathAssistsEmptyNotNil(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Contains(t, string(out), `"assists":[]`)
+}
+
+// TestFansiteDeathReason verifies that the fansite API (JSON) parsing path
+// computes a death reason sentence, since the fansite API provides no such
+// field, so it is populated consistently with the HTML parsing path.
+func TestFansiteDeathReason(t *testing.T) {
+	testCases := []struct {
+		name     string
+		level    int
+		killers  []Killers
+		assists  []Killers
+		expected string
+	}{
+		{
+			name:     "creature kill, no assists",
+			level:    264,
+			killers:  []Killers{{Name: "gazer spectre"}},
+			expected: "Died at Level 264 by a gazer spectre.",
+		},
+		{
+			name:     "creature kill starting with vowel",
+			level:    266,
+			killers:  []Killers{{Name: "ice golem"}},
+			expected: "Died at Level 266 by an ice golem.",
+		},
+		{
+			name:     "single player killer",
+			level:    268,
+			killers:  []Killers{{Name: "Riley No Hands", Player: true}},
+			expected: "Killed at Level 268 by Riley No Hands.",
+		},
+		{
+			name:  "five player killers is slain",
+			level: 240,
+			killers: []Killers{
+				{Name: "A", Player: true}, {Name: "B", Player: true}, {Name: "C", Player: true},
+				{Name: "D", Player: true}, {Name: "E", Player: true},
+			},
+			expected: "Slain at Level 240 by A, B, C, D and E.",
+		},
+		{
+			name:  "twenty player killers is annihilated",
+			level: 240,
+			killers: func() []Killers {
+				var k []Killers
+				for i := 0; i < 20; i++ {
+					k = append(k, Killers{Name: fmt.Sprintf("P%d", i), Player: true})
+				}
+				return k
+			}(),
+			expected: "Annihilated at Level 240 by P0, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15, P16, P17, P18 and P19.",
+		},
+		{
+			name:     "creature killer with player assists",
+			level:    259,
+			killers:  []Killers{{Name: "Duke Krule", Player: true}},
+			assists:  []Killers{{Name: "Mapius Akuno", Player: true}},
+			expected: "Killed at Level 259 by Duke Krule. Assisted by Mapius Akuno.",
+		},
+		{
+			name:     "traded killer",
+			level:    267,
+			killers:  []Killers{{Name: "Marchane kee", Player: true, Traded: true}},
+			expected: "Killed at Level 267 by Marchane kee (traded).",
+		},
+		{
+			name:     "summoned creature killer",
+			level:    597,
+			killers:  []Killers{{Name: "Fllockyy", Player: true, Summon: "paladin familiar"}},
+			expected: "Killed at Level 597 by a paladin familiar of Fllockyy.",
+		},
+		{
+			name:     "assist only, no killers",
+			level:    968,
+			assists:  []Killers{{Name: "Pipoca Shaman", Player: true}},
+			expected: "Died at Level 968. Assisted by Pipoca Shaman.",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, fansiteDeathReason(tc.level, tc.killers, tc.assists))
+		})
+	}
 }
 
 func TestNumber3(t *testing.T) {

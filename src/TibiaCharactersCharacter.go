@@ -127,6 +127,113 @@ func fansiteUnixToDate(ts int64) string {
 	return time.Unix(ts, 0).UTC().Format("2006-01-02")
 }
 
+// fansiteDeathReason computes a human-readable death reason sentence for the
+// fansite API (JSON) parsing path, since the fansite API provides no such
+// field directly. This mirrors the format used by the HTML parsing path
+// (which scrapes the literal sentence from tibia.com), so that the "reason"
+// field is populated consistently regardless of the parsing path used.
+//
+// The verb is chosen based on the number of player killers (assists don't
+// count), following Tibia's convention: Died (0), Killed (1-4), Slain (5-9),
+// Crushed (10-14), Eliminated (15-19), Annihilated (20+). Tibia additionally
+// randomizes verb synonyms and omits the a/an article for certain unique
+// monsters; neither is derivable from the fansite API data, so this is a
+// best-effort, deterministic reconstruction rather than a byte-for-byte
+// match of the scraped HTML text.
+func fansiteDeathReason(level int, killers []Killers, assists []Killers) string {
+	playerKillers := 0
+	for _, k := range killers {
+		if k.Player {
+			playerKillers++
+		}
+	}
+
+	var verb string
+	switch {
+	case playerKillers == 0:
+		verb = "Died"
+	case playerKillers <= 4:
+		verb = "Killed"
+	case playerKillers <= 9:
+		verb = "Slain"
+	case playerKillers <= 14:
+		verb = "Crushed"
+	case playerKillers <= 19:
+		verb = "Eliminated"
+	default:
+		verb = "Annihilated"
+	}
+
+	var b strings.Builder
+	b.WriteString(verb)
+	fmt.Fprintf(&b, " at Level %d", level)
+	if len(killers) > 0 {
+		b.WriteString(" by ")
+		b.WriteString(fansiteJoinKillerNames(killers))
+	}
+	b.WriteString(".")
+	if len(assists) > 0 {
+		b.WriteString(" Assisted by ")
+		b.WriteString(fansiteJoinKillerNames(assists))
+		b.WriteString(".")
+	}
+
+	return b.String()
+}
+
+// fansiteJoinKillerNames joins killer/assist display names in Tibia's list
+// style: comma-separated, with " and " (no Oxford comma) before the last one.
+func fansiteJoinKillerNames(list []Killers) string {
+	names := make([]string, len(list))
+	for i, k := range list {
+		names[i] = fansiteFormatKillerName(k)
+	}
+
+	if len(names) == 1 {
+		return names[0]
+	}
+
+	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
+}
+
+// fansiteFormatKillerName formats a single killer/assist display name,
+// prefixing creature (non-player) names with "a"/"an" and appending
+// "(traded)" when applicable.
+func fansiteFormatKillerName(k Killers) string {
+	var name string
+	switch {
+	case k.Summon != "":
+		name = fmt.Sprintf("%s of %s", fansiteWithArticle(k.Summon), k.Name)
+	case !k.Player:
+		name = fansiteWithArticle(k.Name)
+	default:
+		name = k.Name
+	}
+
+	if k.Traded {
+		name += " (traded)"
+	}
+
+	return name
+}
+
+// fansiteWithArticle prefixes a name with "a" or "an" based on a simple
+// vowel heuristic. Tibia omits the article for certain unique monsters, but
+// that distinction isn't derivable from the fansite API data.
+func fansiteWithArticle(name string) string {
+	if name == "" {
+		return name
+	}
+
+	r, _ := utf8.DecodeRuneInString(name)
+	article := "a"
+	if strings.ContainsRune("aeiouAEIOU", r) {
+		article = "an"
+	}
+
+	return article + " " + name
+}
+
 func tibiaDataLooksLikeJSON(content string) bool {
 	return strings.HasPrefix(strings.TrimSpace(content), "{")
 }
@@ -297,6 +404,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					death := Deaths{
 						Time:    fansiteUnixToDatetime(d.Date),
 						Level:   d.Level,
+						Killers: []Killers{},
 						Assists: []Killers{},
 					}
 					for _, murderer := range d.Murderers {
@@ -314,6 +422,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 							death.Killers = append(death.Killers, k)
 						}
 					}
+					death.Reason = fansiteDeathReason(death.Level, death.Killers, death.Assists)
 					deaths = append(deaths, death)
 				}
 			}
