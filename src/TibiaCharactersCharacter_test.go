@@ -565,6 +565,12 @@ func TestFansiteDeathReason(t *testing.T) {
 			expected: "Died at Level 266 by an ice golem.",
 		},
 		{
+			name:     "named boss without article",
+			level:    39,
+			killers:  []Killers{{Name: "Anmothra"}},
+			expected: "Died at Level 39 by Anmothra.",
+		},
+		{
 			name:     "single player killer",
 			level:    268,
 			killers:  []Killers{{Name: "Riley No Hands", Player: true}},
@@ -637,13 +643,9 @@ func TestFansiteWithArticleEmptyName(t *testing.T) {
 // same character, including deaths where the killer has a "remark" (summon),
 // to verify the two parsing paths produce equivalent output.
 //
-// tibia.com's death text randomizes the "a"/"an" article before non-player
-// creature killer names independently of the creature itself: the exact same
-// creature name is scraped both with and without the article across
-// different fixtures (e.g. "skeleton elite warrior" in Riley No Hands.html
-// vs Sergiozk.html). That randomness can't be derived from the fansite API,
-// so deaths[18] and deaths[19] ("Anmothra") are expected to mismatch only on
-// the article and are checked separately.
+// Common creature names sometimes appear with or without an article in the
+// HTML text, which cannot be reconstructed from the fansite API. Named
+// monsters such as Anmothra, however, are consistently rendered without one.
 func TestCharacterLeataClanReasonMatchesHTML(t *testing.T) {
 	readDeaths := func(fixture, url string) []Deaths {
 		file, err := static.TestFiles.Open(fixture)
@@ -681,14 +683,7 @@ func TestCharacterLeataClanReasonMatchesHTML(t *testing.T) {
 	}
 	assert.True(t, sawSummon, "expected fixture to contain a death with a summoned killer")
 
-	knownArticleMismatchIdx := map[int]bool{18: true, 19: true}
-
 	for i := range htmlDeaths {
-		if knownArticleMismatchIdx[i] {
-			assert.Equal(t, "Died at Level "+fmt.Sprint(htmlDeaths[i].Level)+" by Anmothra.", htmlDeaths[i].Reason)
-			assert.Equal(t, "Died at Level "+fmt.Sprint(jsonDeaths[i].Level)+" by an Anmothra.", jsonDeaths[i].Reason)
-			continue
-		}
 		assert.Equal(t, htmlDeaths[i].Reason, jsonDeaths[i].Reason, "mismatch at death index %d", i)
 	}
 }

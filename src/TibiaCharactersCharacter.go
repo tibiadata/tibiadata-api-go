@@ -223,15 +223,19 @@ func fansiteFormatKillerName(k Killers) string {
 	return name
 }
 
-// fansiteWithArticle prefixes a name with "a" or "an" based on a simple
-// vowel heuristic. Tibia omits the article for certain unique monsters, but
-// that distinction isn't derivable from the fansite API data.
+// fansiteWithArticle prefixes a common creature name with "a" or "an" based
+// on a simple vowel heuristic. Proper names, including named bosses such as
+// Anmothra, are used without an article.
 func fansiteWithArticle(name string) string {
 	if name == "" {
 		return name
 	}
 
 	r, _ := utf8.DecodeRuneInString(name)
+	if unicode.IsUpper(r) {
+		return name
+	}
+
 	article := "a"
 	if strings.ContainsRune("aeiouAEIOU", r) {
 		article = "an"
