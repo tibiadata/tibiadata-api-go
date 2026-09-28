@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/mantyr/go-charset/data"
@@ -33,6 +34,15 @@ var (
 
 	// ErrorNotFound will be returned if the requests ends up in a 404
 	ErrorNotFound = errors.New("page not found")
+)
+
+const (
+	cacheMaxAgeCharacters = 300 * time.Second
+	cacheMaxAgeGuilds     = 120 * time.Second
+	cacheMaxAgeHighscores = 900 * time.Second
+	cacheMaxAgeHouses     = 300 * time.Second
+	cacheMaxAgeNews       = 900 * time.Second
+	cacheMaxAgeWorlds     = 60 * time.Second
 )
 
 // initTibiaDataClient creates the shared resty client with static configuration.
@@ -98,11 +108,91 @@ type Status struct {
 
 // TibiaDataRequest is the struct of request information
 type TibiaDataRequestStruct struct {
-	Method        string            `json:"method"`          // Request method (default: GET)
-	URL           string            `json:"url"`             // Request URL
-	FormData      map[string]string `json:"form_data"`       // Request form content (used when POST)
-	RawBody       bool              `json:"raw_body"`        // If set to true the whole content from tibia.com will be passed down
-	UseFansiteAPI bool              `json:"use_fansite_api"` // If true, fetch data from Fansite API JSON endpoint
+	Method        string                  `json:"method"`          // Request method (default: GET)
+	URL           string                  `json:"url"`             // Request URL
+	FormData      map[string]string       `json:"form_data"`       // Request form content (used when POST)
+	RawBody       bool                    `json:"raw_body"`        // If set to true the whole content from tibia.com will be passed down
+	UseFansiteAPI bool                    `json:"use_fansite_api"` // If true, fetch data from Fansite API JSON endpoint
+	CacheMaxAge   time.Duration           `json:"-"`
+	CacheMetadata *TibiaDataCacheMetadata `json:"-"`
+}
+
+// TibiaDataCacheMetadata tracks the age of upstream responses used to build an API response.
+type TibiaDataCacheMetadata struct {
+	mu     sync.Mutex
+	age    time.Duration
+	source string
+}
+
+func (m *TibiaDataCacheMetadata) recordUpstreamHeaders(headers http.Header) {
+	if m == nil {
+		return
+	}
+
+	var age time.Duration
+	source := ""
+	hasAge := false
+	if ageHeader := headers.Get("Age"); ageHeader != "" {
+		if seconds, err := strconv.ParseInt(strings.TrimSpace(ageHeader), 10, 64); err == nil && seconds >= 0 {
+			hasAge = true
+			source = "Age"
+			maxDurationSeconds := int64((1<<63 - 1) / int64(time.Second))
+			if seconds > maxDurationSeconds {
+				age = time.Duration(1<<63 - 1)
+			} else {
+				age = time.Duration(seconds) * time.Second
+			}
+		}
+	}
+	if !hasAge {
+		date, dateErr := http.ParseTime(headers.Get("Date"))
+		lastModified, lastModifiedErr := http.ParseTime(headers.Get("Last-Modified"))
+		if dateErr == nil && lastModifiedErr == nil {
+			source = "Date-Last-Modified"
+		}
+		if source != "" && date.After(lastModified) {
+			age = date.Sub(lastModified)
+		}
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.source == "" || age > m.age {
+		m.age = age
+		m.source = source
+	}
+}
+
+func (m *TibiaDataCacheMetadata) remainingCacheAge(maxAge time.Duration) time.Duration {
+	if maxAge <= 0 {
+		return maxAge
+	}
+
+	age := time.Duration(0)
+	if m != nil {
+		m.mu.Lock()
+		age = m.age
+		m.mu.Unlock()
+	}
+
+	remaining := maxAge - age
+	if remaining <= 0 {
+		return 0
+	}
+	return remaining
+}
+
+func (m *TibiaDataCacheMetadata) ageDetails() (time.Duration, string) {
+	if m == nil {
+		return 0, "none"
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.source == "" {
+		return 0, "none"
+	}
+	return m.age, m.source
 }
 
 // RunWebServer starts the gin server
@@ -211,9 +301,15 @@ func runWebServer() {
 
 		// Tibia highscores
 		v4.GET("/highscores/:world", func(c *gin.Context) {
+			if TibiaDataCacheAwareness {
+				c.Header("Cache-Control", tibiaDataCacheControlValue(cacheMaxAgeHighscores))
+			}
 			c.Redirect(http.StatusMovedPermanently, v4.BasePath()+"/highscores/"+c.Param("world")+"/experience/"+TibiaDataDefaultVoc+"/1")
 		})
 		v4.GET("/highscores/:world/:category", func(c *gin.Context) {
+			if TibiaDataCacheAwareness {
+				c.Header("Cache-Control", tibiaDataCacheControlValue(cacheMaxAgeHighscores))
+			}
 			c.Redirect(http.StatusMovedPermanently, v4.BasePath()+"/highscores/"+c.Param("world")+"/"+c.Param("category")+"/"+TibiaDataDefaultVoc+"/1")
 		})
 		v4.GET("/highscores/:world/:category/:vocation", tibiaHighscores)
@@ -348,6 +444,7 @@ func tibiaCharactersCharacter(c *gin.Context) {
 		Method:        resty.MethodGet,
 		URL:           requestURL,
 		UseFansiteAPI: useFansiteAPI,
+		CacheMaxAge:   cacheMaxAgeCharacters,
 	}
 
 	// Handle the request
@@ -473,8 +570,9 @@ func tibiaGuildsGuild(c *gin.Context) {
 	}
 
 	tibiadataRequest := TibiaDataRequestStruct{
-		Method: resty.MethodGet,
-		URL:    "https://www.tibia.com/community/?subtopic=guilds&page=view&GuildName=" + TibiaDataQueryEscapeString(guild),
+		Method:      resty.MethodGet,
+		URL:         "https://www.tibia.com/community/?subtopic=guilds&page=view&GuildName=" + TibiaDataQueryEscapeString(guild),
+		CacheMaxAge: cacheMaxAgeGuilds,
 	}
 
 	tibiaDataRequestHandler(
@@ -518,8 +616,9 @@ func tibiaGuildsOverview(c *gin.Context) {
 	world = TibiaDataStringWorldFormatToTitle(world)
 
 	tibiadataRequest := TibiaDataRequestStruct{
-		Method: resty.MethodGet,
-		URL:    "https://www.tibia.com/community/?subtopic=guilds&world=" + TibiaDataQueryEscapeString(world),
+		Method:      resty.MethodGet,
+		URL:         "https://www.tibia.com/community/?subtopic=guilds&world=" + TibiaDataQueryEscapeString(world),
+		CacheMaxAge: cacheMaxAgeGuilds,
 	}
 
 	tibiaDataRequestHandler(
@@ -611,8 +710,9 @@ func tibiaHighscores(c *gin.Context) {
 	}
 
 	tibiadataRequest := TibiaDataRequestStruct{
-		Method: resty.MethodGet,
-		URL:    "https://www.tibia.com/community/?subtopic=highscores&world=" + TibiaDataQueryEscapeString(world) + "&category=" + strconv.Itoa(int(highscoreCategory)) + "&profession=" + TibiaDataQueryEscapeString(vocationid) + "&currentpage=" + TibiaDataQueryEscapeString(page),
+		Method:      resty.MethodGet,
+		URL:         "https://www.tibia.com/community/?subtopic=highscores&world=" + TibiaDataQueryEscapeString(world) + "&category=" + strconv.Itoa(int(highscoreCategory)) + "&profession=" + TibiaDataQueryEscapeString(vocationid) + "&currentpage=" + TibiaDataQueryEscapeString(page),
+		CacheMaxAge: cacheMaxAgeHighscores,
 	}
 
 	tibiaDataRequestHandler(
@@ -676,8 +776,9 @@ func tibiaHousesHouse(c *gin.Context) {
 	}
 
 	tibiadataRequest := TibiaDataRequestStruct{
-		Method: resty.MethodGet,
-		URL:    "https://www.tibia.com/community/?subtopic=houses&page=view&world=" + TibiaDataQueryEscapeString(world) + "&houseid=" + TibiaDataQueryEscapeString(houseidStr),
+		Method:      resty.MethodGet,
+		URL:         "https://www.tibia.com/community/?subtopic=houses&page=view&world=" + TibiaDataQueryEscapeString(world) + "&houseid=" + TibiaDataQueryEscapeString(houseidStr),
+		CacheMaxAge: cacheMaxAgeHouses,
 	}
 
 	tibiaDataRequestHandler(
@@ -742,14 +843,22 @@ func tibiaHousesOverview(c *gin.Context) {
 		town = "Ab'Dendriel"
 	}
 
-	jsonData, err := TibiaHousesOverviewImpl(c, world, town, TibiaDataHTMLDataCollector)
+	var cacheMetadata *TibiaDataCacheMetadata
+	if TibiaDataCacheAwareness {
+		cacheMetadata = &TibiaDataCacheMetadata{}
+	}
+	cacheAwareCollector := func(request TibiaDataRequestStruct) (string, error) {
+		request.CacheMetadata = cacheMetadata
+		return TibiaDataHTMLDataCollector(request)
+	}
+	jsonData, err := TibiaHousesOverviewImpl(c, world, town, cacheAwareCollector)
 	if err != nil {
 		TibiaDataErrorHandler(c, err, 0)
 		return
 	}
 
 	// return jsonData
-	TibiaDataAPIHandleResponse(c, "TibiaHousesOverview", jsonData)
+	TibiaDataAPIHandleCachedResponse(c, "TibiaHousesOverview", jsonData, cacheMaxAgeHouses, cacheMetadata)
 }
 
 // Killstatistics godoc
@@ -884,8 +993,9 @@ func tibiaNewslist(c *gin.Context) {
 	DateEnd := time.Now()
 
 	tibiadataRequest := TibiaDataRequestStruct{
-		Method: http.MethodPost,
-		URL:    "https://www.tibia.com/news/?subtopic=newsarchive",
+		Method:      http.MethodPost,
+		URL:         "https://www.tibia.com/news/?subtopic=newsarchive",
+		CacheMaxAge: cacheMaxAgeNews,
 		FormData: map[string]string{
 			"filter_begin_day":   strconv.Itoa(DateBegin.UTC().Day()),        // period
 			"filter_begin_month": strconv.Itoa(int(DateBegin.UTC().Month())), // period
@@ -956,8 +1066,9 @@ func tibiaNews(c *gin.Context) {
 	}
 
 	tibiadataRequest := TibiaDataRequestStruct{
-		Method: resty.MethodGet,
-		URL:    "https://www.tibia.com/news/?subtopic=newsarchive&id=" + newsIDStr,
+		Method:      resty.MethodGet,
+		URL:         "https://www.tibia.com/news/?subtopic=newsarchive&id=" + newsIDStr,
+		CacheMaxAge: cacheMaxAgeNews,
 	}
 
 	tibiaDataRequestHandler(
@@ -1066,8 +1177,9 @@ func tibiaSpellsSpell(c *gin.Context) {
 // @Router       /v4/worlds [get]
 func tibiaWorldsOverview(c *gin.Context) {
 	tibiadataRequest := TibiaDataRequestStruct{
-		Method: resty.MethodGet,
-		URL:    "https://www.tibia.com/community/?subtopic=worlds",
+		Method:      resty.MethodGet,
+		URL:         "https://www.tibia.com/community/?subtopic=worlds",
+		CacheMaxAge: cacheMaxAgeWorlds,
 	}
 
 	tibiaDataRequestHandler(
@@ -1111,8 +1223,9 @@ func tibiaWorldsWorld(c *gin.Context) {
 	}
 
 	tibiadataRequest := TibiaDataRequestStruct{
-		Method: resty.MethodGet,
-		URL:    "https://www.tibia.com/community/?subtopic=worlds&world=" + TibiaDataQueryEscapeString(world),
+		Method:      resty.MethodGet,
+		URL:         "https://www.tibia.com/community/?subtopic=worlds&world=" + TibiaDataQueryEscapeString(world),
+		CacheMaxAge: cacheMaxAgeWorlds,
 	}
 
 	tibiaDataRequestHandler(
@@ -1178,6 +1291,9 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 		boxContent string
 		err        error
 	)
+	if TibiaDataCacheAwareness && tibiaDataRequest.CacheMaxAge > 0 && tibiaDataRequest.CacheMetadata == nil {
+		tibiaDataRequest.CacheMetadata = &TibiaDataCacheMetadata{}
+	}
 
 	if tibiaDataRequest.UseFansiteAPI {
 		boxContent, err = TibiaDataJSONDataCollector(tibiaDataRequest)
@@ -1198,6 +1314,10 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 	}
 
 	// return jsonData
+	if TibiaDataCacheAwareness && tibiaDataRequest.CacheMaxAge > 0 {
+		TibiaDataAPIHandleCachedResponse(c, handlerName, jsonData, tibiaDataRequest.CacheMaxAge, tibiaDataRequest.CacheMetadata)
+		return
+	}
 	TibiaDataAPIHandleResponse(c, handlerName, jsonData)
 }
 
@@ -1215,6 +1335,7 @@ func TibiaDataJSONDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 
 	switch res.StatusCode() {
 	case http.StatusOK:
+		TibiaDataRequest.CacheMetadata.recordUpstreamHeaders(res.Header())
 		return string(res.Body()), nil
 	case http.StatusForbidden:
 		return "", validation.ErrStatusForbidden
@@ -1289,6 +1410,33 @@ func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 
 	// return successful response
 	c.JSON(http.StatusOK, j)
+}
+
+func TibiaDataAPIHandleCachedResponse(c *gin.Context, name string, data interface{}, maxAge time.Duration, metadata *TibiaDataCacheMetadata) {
+	if TibiaDataCacheAwareness && c != nil && maxAge > 0 {
+		remaining := metadata.remainingCacheAge(maxAge)
+		remainingSeconds := int64(remaining / time.Second)
+		if remaining < time.Second {
+			c.Header("Cache-Control", "no-store")
+		} else {
+			c.Header("Cache-Control", tibiaDataCacheControlValue(remaining))
+		}
+		if TibiaDataDebug {
+			upstreamAge, ageSource := metadata.ageDetails()
+			requestURI := ""
+			if c.Request != nil {
+				requestURI = c.Request.RequestURI
+			}
+			log.Printf("[debug] cache response: handler=%s request=%s age_source=%s upstream_age=%s max_age=%s remaining_max_age=%ds cacheable=%t",
+				name, requestURI, ageSource, upstreamAge, maxAge, remainingSeconds, remaining >= time.Second)
+		}
+	}
+	TibiaDataAPIHandleResponse(c, name, data)
+}
+
+func tibiaDataCacheControlValue(maxAge time.Duration) string {
+	seconds := int64(maxAge / time.Second)
+	return fmt.Sprintf("public, max-age=%d, s-maxage=%d", seconds, seconds)
 }
 
 // TibiadataUserAgentGenerator func - creates User-Agent for requests
@@ -1378,6 +1526,8 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 		log.Printf("[error] TibiaDataHTMLDataCollector: %s!", LogMessage)
 		return "", validation.ErrStatusUnknown
 	}
+
+	TibiaDataRequest.CacheMetadata.recordUpstreamHeaders(res.Header())
 
 	if TibiaDataRequest.RawBody {
 		return string(res.Body()), nil

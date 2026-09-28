@@ -18,6 +18,7 @@ var (
 	TibiaDataAPIversion      int = 4
 	TibiaDataDebug           bool
 	TibiaDataRestrictionMode bool
+	TibiaDataCacheAwareness  bool = true
 
 	// TibiaData app settings
 	TibiaDataAPIDetails APIDetails // containing information from build
@@ -129,6 +130,9 @@ func TibiaDataInitializer() {
 			log.Printf("[warn] TibiaData API fansiteapi: token is invalid: %s", err)
 		}
 	}
+
+	TibiaDataCacheAwareness = getEnvAsBool("TIBIADATA_CACHE_AWARENESS", true)
+	log.Printf("[info] TibiaData API cache-awareness: %t", TibiaDataCacheAwareness)
 
 	// Adding information of host
 	if isEnvExist("TIBIADATA_HOST") {
