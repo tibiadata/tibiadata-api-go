@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	_ "github.com/mantyr/go-charset/data"
@@ -109,99 +108,12 @@ type Status struct {
 
 // TibiaDataRequest is the struct of request information
 type TibiaDataRequestStruct struct {
-	Method        string                  `json:"method"`          // Request method (default: GET)
-	URL           string                  `json:"url"`             // Request URL
-	FormData      map[string]string       `json:"form_data"`       // Request form content (used when POST)
-	RawBody       bool                    `json:"raw_body"`        // If set to true the whole content from tibia.com will be passed down
-	UseFansiteAPI bool                    `json:"use_fansite_api"` // If true, fetch data from Fansite API JSON endpoint
-	CacheMaxAge   time.Duration           `json:"-"`
-	CacheMetadata *TibiaDataCacheMetadata `json:"-"`
-}
-
-// TibiaDataCacheMetadata tracks the age of upstream responses used to build an API response.
-type TibiaDataCacheMetadata struct {
-	mu     sync.Mutex
-	age    time.Duration
-	source string
-}
-
-func (m *TibiaDataCacheMetadata) recordUpstreamHeaders(headers http.Header) {
-	if m == nil {
-		return
-	}
-
-	age, source, ok := upstreamResponseAge(headers)
-	if !ok {
-		return
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.source == "" || age > m.age {
-		m.age = age
-		m.source = source
-	}
-}
-
-func upstreamResponseAge(headers http.Header) (time.Duration, string, bool) {
-	if age, ok := parseAgeHeader(headers.Get("Age")); ok {
-		return age, "Age", true
-	}
-	return lastModifiedAge(headers)
-}
-
-func parseAgeHeader(value string) (time.Duration, bool) {
-	seconds, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
-	if err != nil || seconds < 0 {
-		return 0, false
-	}
-
-	maxDurationSeconds := int64((1<<63 - 1) / int64(time.Second))
-	if seconds > maxDurationSeconds {
-		return time.Duration(1<<63 - 1), true
-	}
-	return time.Duration(seconds) * time.Second, true
-}
-
-func lastModifiedAge(headers http.Header) (time.Duration, string, bool) {
-	date, dateErr := http.ParseTime(headers.Get("Date"))
-	lastModified, lastModifiedErr := http.ParseTime(headers.Get("Last-Modified"))
-	if dateErr != nil || lastModifiedErr != nil || !date.After(lastModified) {
-		return 0, "", false
-	}
-	return date.Sub(lastModified), "Date-Last-Modified", true
-}
-
-func (m *TibiaDataCacheMetadata) remainingCacheAge(maxAge time.Duration) time.Duration {
-	if maxAge <= 0 {
-		return maxAge
-	}
-
-	age := time.Duration(0)
-	if m != nil {
-		m.mu.Lock()
-		age = m.age
-		m.mu.Unlock()
-	}
-
-	remaining := maxAge - age
-	if remaining <= 0 {
-		return 0
-	}
-	return remaining
-}
-
-func (m *TibiaDataCacheMetadata) ageDetails() (time.Duration, string) {
-	if m == nil {
-		return 0, "none"
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.source == "" {
-		return 0, "none"
-	}
-	return m.age, m.source
+	Method        string            `json:"method"`          // Request method (default: GET)
+	URL           string            `json:"url"`             // Request URL
+	FormData      map[string]string `json:"form_data"`       // Request form content (used when POST)
+	RawBody       bool              `json:"raw_body"`        // If set to true the whole content from tibia.com will be passed down
+	UseFansiteAPI bool              `json:"use_fansite_api"` // If true, fetch data from Fansite API JSON endpoint
+	CacheMaxAge   time.Duration     `json:"-"`
 }
 
 // RunWebServer starts the gin server
@@ -852,22 +764,14 @@ func tibiaHousesOverview(c *gin.Context) {
 		town = "Ab'Dendriel"
 	}
 
-	var cacheMetadata *TibiaDataCacheMetadata
-	if TibiaDataCacheAwareness {
-		cacheMetadata = &TibiaDataCacheMetadata{}
-	}
-	cacheAwareCollector := func(request TibiaDataRequestStruct) (string, error) {
-		request.CacheMetadata = cacheMetadata
-		return TibiaDataHTMLDataCollector(request)
-	}
-	jsonData, err := TibiaHousesOverviewImpl(c, world, town, cacheAwareCollector)
+	jsonData, err := TibiaHousesOverviewImpl(c, world, town, TibiaDataHTMLDataCollector)
 	if err != nil {
 		TibiaDataErrorHandler(c, err, 0)
 		return
 	}
 
 	// return jsonData
-	TibiaDataAPIHandleCachedResponse(c, "TibiaHousesOverview", jsonData, cacheMaxAgeHouses, cacheMetadata)
+	TibiaDataAPIHandleCachedResponse(c, "TibiaHousesOverview", jsonData, cacheMaxAgeHouses)
 }
 
 // Killstatistics godoc
@@ -1300,10 +1204,6 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 		boxContent string
 		err        error
 	)
-	if TibiaDataCacheAwareness && tibiaDataRequest.CacheMaxAge > 0 && tibiaDataRequest.CacheMetadata == nil {
-		tibiaDataRequest.CacheMetadata = &TibiaDataCacheMetadata{}
-	}
-
 	if tibiaDataRequest.UseFansiteAPI {
 		boxContent, err = TibiaDataJSONDataCollector(tibiaDataRequest)
 	} else {
@@ -1324,7 +1224,7 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 
 	// return jsonData
 	if TibiaDataCacheAwareness && tibiaDataRequest.CacheMaxAge > 0 {
-		TibiaDataAPIHandleCachedResponse(c, handlerName, jsonData, tibiaDataRequest.CacheMaxAge, tibiaDataRequest.CacheMetadata)
+		TibiaDataAPIHandleCachedResponse(c, handlerName, jsonData, tibiaDataRequest.CacheMaxAge)
 		return
 	}
 	TibiaDataAPIHandleResponse(c, handlerName, jsonData)
@@ -1344,7 +1244,6 @@ func TibiaDataJSONDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 
 	switch res.StatusCode() {
 	case http.StatusOK:
-		TibiaDataRequest.CacheMetadata.recordUpstreamHeaders(res.Header())
 		return string(res.Body()), nil
 	case http.StatusForbidden:
 		return "", validation.ErrStatusForbidden
@@ -1421,23 +1320,16 @@ func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 	c.JSON(http.StatusOK, j)
 }
 
-func TibiaDataAPIHandleCachedResponse(c *gin.Context, name string, data interface{}, maxAge time.Duration, metadata *TibiaDataCacheMetadata) {
+func TibiaDataAPIHandleCachedResponse(c *gin.Context, name string, data interface{}, maxAge time.Duration) {
 	if TibiaDataCacheAwareness && c != nil && maxAge > 0 {
-		remaining := metadata.remainingCacheAge(maxAge)
-		remainingSeconds := int64(remaining / time.Second)
-		if remaining < time.Second {
-			c.Header(cacheControlHeader, "no-store")
-		} else {
-			c.Header(cacheControlHeader, tibiaDataCacheControlValue(remaining))
-		}
+		c.Header(cacheControlHeader, tibiaDataCacheControlValue(maxAge))
 		if TibiaDataDebug {
-			upstreamAge, ageSource := metadata.ageDetails()
 			requestURI := ""
 			if c.Request != nil {
 				requestURI = c.Request.RequestURI
 			}
-			log.Printf("[debug] cache response: handler=%s request=%s age_source=%s upstream_age=%s max_age=%s remaining_max_age=%ds cacheable=%t",
-				name, requestURI, ageSource, upstreamAge, maxAge, remainingSeconds, remaining >= time.Second)
+			log.Printf("[debug] cache response: handler=%s request=%s max_age=%s",
+				name, requestURI, maxAge)
 		}
 	}
 	TibiaDataAPIHandleResponse(c, name, data)
@@ -1535,8 +1427,6 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 		log.Printf("[error] TibiaDataHTMLDataCollector: %s!", LogMessage)
 		return "", validation.ErrStatusUnknown
 	}
-
-	TibiaDataRequest.CacheMetadata.recordUpstreamHeaders(res.Header())
 
 	if TibiaDataRequest.RawBody {
 		return string(res.Body()), nil
