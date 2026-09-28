@@ -608,7 +608,7 @@ func TestFansiteDeathReason(t *testing.T) {
 			name:     "summoned creature killer",
 			level:    597,
 			killers:  []Killers{{Name: "Fllockyy", Player: true, Summon: "paladin familiar"}},
-			expected: "Killed at Level 597 by a paladin familiar of Fllockyy.",
+			expected: "Killed at Level 597 by paladin familiar of Fllockyy.",
 		},
 		{
 			name:     "assist only, no killers",
@@ -622,6 +622,67 @@ func TestFansiteDeathReason(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.Equal(t, tc.expected, fansiteDeathReason(tc.level, tc.killers, tc.assists))
 		})
+	}
+}
+
+// TestCharacterLeataClanReasonMatchesHTML compares the computed JSON death
+// reasons against the literal reasons scraped from tibia.com's HTML for the
+// same character, including deaths where the killer has a "remark" (summon),
+// to verify the two parsing paths produce equivalent output.
+//
+// tibia.com's death text randomizes the "a"/"an" article before non-player
+// creature killer names independently of the creature itself: the exact same
+// creature name is scraped both with and without the article across
+// different fixtures (e.g. "skeleton elite warrior" in Riley No Hands.html
+// vs Sergiozk.html). That randomness can't be derived from the fansite API,
+// so deaths[18] and deaths[19] ("Anmothra") are expected to mismatch only on
+// the article and are checked separately.
+func TestCharacterLeataClanReasonMatchesHTML(t *testing.T) {
+	readDeaths := func(fixture, url string) []Deaths {
+		file, err := static.TestFiles.Open(fixture)
+		if err != nil {
+			t.Fatalf("file opening error: %s", err)
+		}
+		defer file.Close()
+
+		data, err := io.ReadAll(file)
+		if err != nil {
+			t.Fatalf("file reading error: %s", err)
+		}
+
+		response, err := TibiaCharactersCharacterImpl(string(data), url)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return response.Character.Deaths
+	}
+
+	htmlDeaths := readDeaths("testdata/characters/Leata Clan.html", "https://www.tibia.com/community/?subtopic=characters&name=Leata+Clan")
+	jsonDeaths := readDeaths("testdata/characters/Leata Clan.json", "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Leata%20Clan")
+
+	assert.Equal(t, len(htmlDeaths), len(jsonDeaths))
+
+	// sanity check that the fixtures do exercise the "remark" (summon) field
+	sawSummon := false
+	for _, d := range jsonDeaths {
+		for _, k := range d.Killers {
+			if k.Summon != "" {
+				sawSummon = true
+			}
+		}
+	}
+	assert.True(t, sawSummon, "expected fixture to contain a death with a summoned killer")
+
+	knownArticleMismatchIdx := map[int]bool{18: true, 19: true}
+
+	for i := range htmlDeaths {
+		if knownArticleMismatchIdx[i] {
+			assert.Equal(t, "Died at Level "+fmt.Sprint(htmlDeaths[i].Level)+" by Anmothra.", htmlDeaths[i].Reason)
+			assert.Equal(t, "Died at Level "+fmt.Sprint(jsonDeaths[i].Level)+" by an Anmothra.", jsonDeaths[i].Reason)
+			continue
+		}
+		assert.Equal(t, htmlDeaths[i].Reason, jsonDeaths[i].Reason, "mismatch at death index %d", i)
 	}
 }
 

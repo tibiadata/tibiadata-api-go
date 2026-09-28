@@ -197,13 +197,15 @@ func fansiteJoinKillerNames(list []Killers) string {
 }
 
 // fansiteFormatKillerName formats a single killer/assist display name,
-// prefixing creature (non-player) names with "a"/"an" and appending
-// "(traded)" when applicable.
+// prefixing a plain creature (non-player, non-summon) name with "a"/"an" and
+// appending "(traded)" when applicable. Summoned creatures ("<creature> of
+// <owner>") are left without an article, matching how tibia.com displays
+// them in the vast majority of cases.
 func fansiteFormatKillerName(k Killers) string {
 	var name string
 	switch {
 	case k.Summon != "":
-		name = fmt.Sprintf("%s of %s", fansiteWithArticle(k.Summon), k.Name)
+		name = fmt.Sprintf("%s of %s", k.Summon, k.Name)
 	case !k.Player:
 		name = fansiteWithArticle(k.Name)
 	default:
