@@ -2,7 +2,7 @@ package tibiamapping
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -30,7 +30,7 @@ const (
 // Run is used to load data from the assets JSON file
 func Run(userAgent string) (TibiaMapping, error) {
 	// Logging the start of tibiamapping
-	log.Println("[info] Tibia Mapping is running")
+	slog.Info("Tibia Mapping is running")
 
 	// Setting up resty client
 	client := resty.New()
@@ -85,7 +85,7 @@ func Run(userAgent string) (TibiaMapping, error) {
 	}
 
 	// Log that Tibia Mapping has been successfully completed
-	log.Println("[info] Tibia Mapping completed")
+	slog.Info("Tibia Mapping completed")
 
 	return TibiaMapping{
 		RawData:   res.Body(),

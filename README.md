@@ -116,12 +116,14 @@ The following environment variables can be used to configure the API.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `DEBUG_MODE` | `false` | Enables more verbose (debug) logging. |
+| `DEBUG_MODE` | `false` | Enables verbose upstream HTTP debug/trace (resty) and lowers the default log level when `TIBIADATA_LOG_LEVEL` is unset. |
 | `GIN_MODE` | `release` | Gin mode: `release`, `debug` or `test`. |
 | `GIN_TRUSTED_PROXIES` | _(none)_ | Comma-separated list of trusted proxies (IPs/CIDRs). When unset, no proxies are trusted. |
 | `TIBIADATA_CACHE_CONTROL_HEADERS` | `true` | Adds fixed, endpoint-specific `Cache-Control` headers to successful data responses (see below). |
 | `TIBIADATA_EDITION` | `open-source` | Edition name reported by the API. |
 | `TIBIADATA_HOST` | _(empty)_ | Hostname used when generating API URLs (e.g. in news and the OpenAPI docs). |
+| `TIBIADATA_LOG_FORMAT` | `text` | Log output format: `text` or `json`. |
+| `TIBIADATA_LOG_LEVEL` | `info` (or `debug` when `DEBUG_MODE=true` and unset) | Application log level: `debug`, `info`, `warn`, `error`. |
 | `TIBIADATA_PROTOCOL` | `https` | Protocol used together with `TIBIADATA_HOST` when generating API URLs. |
 | `TIBIADATA_PROXY` | `www.tibia.com` | Domain to fetch data from instead of `www.tibia.com`, e.g. a caching proxy. |
 | `TIBIADATA_PROXY_PROTOCOL` | `https` | Protocol for `TIBIADATA_PROXY` (`http` or `https`). Only used when `TIBIADATA_PROXY` is set. |

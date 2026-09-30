@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"sync/atomic"
 
 	"github.com/tibiadata/tibiadata-api-go/src/validation"
@@ -54,14 +54,14 @@ var (
 // @BasePath  /
 
 func init() {
-	// logging init of TibiaData
-	log.Printf("[info] TibiaData API initializing..")
+	initTibiaDataLogging()
 
-	// Logging build information
-	log.Printf("[info] TibiaData API release: %s", TibiaDataBuildRelease)
-	log.Printf("[info] TibiaData API build: %s", TibiaDataBuildBuilder)
-	log.Printf("[info] TibiaData API commit: %s", TibiaDataBuildCommit)
-	log.Printf("[info] TibiaData API edition: %s", TibiaDataBuildEdition)
+	slog.Info("TibiaData API initializing")
+
+	slog.Info("TibiaData API release", "release", TibiaDataBuildRelease)
+	slog.Info("TibiaData API build", "build", TibiaDataBuildBuilder)
+	slog.Info("TibiaData API commit", "commit", TibiaDataBuildCommit)
+	slog.Info("TibiaData API edition", "edition", TibiaDataBuildEdition)
 
 	TibiaDataAPIDetails = APIDetails{
 		Version: TibiaDataAPIversion,
@@ -69,33 +69,25 @@ func init() {
 		Commit:  TibiaDataBuildCommit,
 	}
 
-	// Setting tibiadata-application to log much less if DEBUG_MODE is false (default is false)
 	if getEnvAsBool("DEBUG_MODE", false) {
-		// Setting debug to true for more logging
 		TibiaDataDebug = true
 	}
-	log.Printf("[info] TibiaData API debug-mode: %t", TibiaDataDebug)
+	slog.Info("TibiaData API debug-mode", "enabled", TibiaDataDebug)
 
-	// Running the TibiaDataInitializer function
 	TibiaDataInitializer()
 
-	// Generating TibiaDataUserAgent with TibiaDataUserAgentGenerator function
 	TibiaDataUserAgent = TibiaDataUserAgentGenerator(TibiaDataAPIversion)
 
 	if TibiaDataDebug {
-		// Logging user-agent string
-		log.Printf("[debug] TibiaData API User-Agent: %s", TibiaDataUserAgent)
+		slog.Debug("TibiaData API User-Agent", "user_agent", TibiaDataUserAgent)
 	}
 
-	// Initialize shared HTTP client (must be after TibiaDataUserAgent is set)
 	initTibiaDataClient()
 
-	// Perform a best-effort, informational check of the fansite API status
 	if TibiaFansiteAPI {
 		checkTibiaFansiteAPIStatus()
 	}
 
-	// Initiate the validator
 	err := validation.Initiate(TibiaDataUserAgent)
 	if err != nil {
 		panic(err)
@@ -104,47 +96,41 @@ func init() {
 }
 
 func main() {
-	// logging start of TibiaData
-	log.Printf("[info] TibiaData API starting..")
+	slog.Info("TibiaData API starting")
 
-	// Starting the webserver
 	runWebServer()
 }
 
 // TibiaDataInitializer set the background for the webserver
 func TibiaDataInitializer() {
-	// Setting TibiaDataBuildEdition
 	if isEnvExist("TIBIADATA_EDITION") {
 		TibiaDataBuildEdition = getEnv("TIBIADATA_EDITION", "open-source")
 	}
 
-	// Check for tibia fansiteapi bearer token
 	if isEnvExist("TIBIA_FANSITEAPI_TOKEN") {
 		TibiaFansiteToken = getEnv("TIBIA_FANSITEAPI_TOKEN", "")
 		if err := validateTibiaFansiteToken(TibiaFansiteToken); err == nil {
 			TibiaFansiteAPI = true
-			log.Printf("[info] TibiaData API fansiteapi: enabled")
+			slog.Info("TibiaData API fansiteapi enabled")
 		} else {
 			TibiaFansiteToken = ""
 			TibiaFansiteAPI = false
-			log.Printf("[warn] TibiaData API fansiteapi: token is invalid: %s", err)
+			slog.Warn("TibiaData API fansiteapi token is invalid", "error", err)
 		}
 	}
 
 	TibiaDataCacheControl = getEnvAsBool("TIBIADATA_CACHE_CONTROL_HEADERS", true)
-	log.Printf("[info] TibiaData API cache-control headers: %t", TibiaDataCacheControl)
+	slog.Info("TibiaData API cache-control headers", "enabled", TibiaDataCacheControl)
 
-	// Adding information of host
 	if isEnvExist("TIBIADATA_HOST") {
 		TibiaDataHost = getEnv("TIBIADATA_HOST", "")
-		log.Println("[info] TibiaData API hostname: " + TibiaDataHost)
+		slog.Info("TibiaData API hostname", "host", TibiaDataHost)
 	}
 	if isEnvExist("TIBIADATA_PROTOCOL") {
 		TibiaDataProtocol = getEnv("TIBIADATA_PROTOCOL", "https")
-		log.Println("[info] TibiaData API protocol: " + TibiaDataProtocol)
+		slog.Info("TibiaData API protocol", "protocol", TibiaDataProtocol)
 	}
 
-	// Setting TibiaDataProxyDomain
 	if isEnvExist("TIBIADATA_PROXY") {
 
 		TibiaDataProxyProtocol := getEnv("TIBIADATA_PROXY_PROTOCOL", "https")
@@ -154,15 +140,13 @@ func TibiaDataInitializer() {
 		}
 
 		TibiaDataProxyDomain = TibiaDataProxyProtocol + "://" + getEnv("TIBIADATA_PROXY", "www.tibia.com") + "/"
-		log.Printf("[info] TibiaData API proxy: %s", TibiaDataProxyDomain)
+		slog.Info("TibiaData API proxy", "proxy", TibiaDataProxyDomain)
 	}
 
-	// Run some functions that are empty but required for documentation to be done
 	_ = tibiaNewslistArchive()
 	_ = tibiaNewslistArchiveDays()
 	_ = tibiaNewslistLatest()
 
-	// Run functions for v3 documentation to work
 	_ = tibiaBoostableBossesV3()
 	_ = tibiaCharactersCharacterV3()
 	_ = tibiaCreaturesOverviewV3()

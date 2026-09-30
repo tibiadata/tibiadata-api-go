@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"regexp"
@@ -52,7 +52,7 @@ func TibiaDataDatetime(date string) string {
 		//returnDate, err = time.Parse("Jan 02 2006, 15:04:05 MST", date)
 
 		if err != nil {
-			log.Println(err)
+			slog.Warn("TibiaDataDatetime parse error", "error", err)
 		}
 	}
 
@@ -148,7 +148,7 @@ func TibiaDataStringToInteger(data string) int {
 	if err != nil {
 		if TibiaDataDebug {
 			sanitized := strings.ReplaceAll(strings.ReplaceAll(data, "\n", "_"), "\r", "_")
-			log.Printf("[warning] TibiaDataStringToInteger: failed to parse '%s' as integer - returning 0", sanitized)
+			slog.Warn("TibiaDataStringToInteger failed to parse integer, returning 0", "value", sanitized)
 		}
 		return 0
 	}

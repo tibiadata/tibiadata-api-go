@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -129,13 +129,11 @@ func runWebServer() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Logging the gin.mode
-	log.Printf("[info] TibiaData API gin-mode: %s", gin.Mode())
+	slog.Info("TibiaData API gin-mode", "mode", gin.Mode())
 
-	// Starting an Engine instance
-	router := gin.Default()
-
-	// Gin middleware to enable GZIP support
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(ginAccessLogMiddleware())
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// Set 404 not found page
@@ -151,14 +149,14 @@ func runWebServer() {
 	if isEnvExist("GIN_TRUSTED_PROXIES") {
 		trustedProxies := getEnv("GIN_TRUSTED_PROXIES", "")
 		_ = router.SetTrustedProxies(strings.Split(trustedProxies, ","))
-		log.Printf("[info] TibiaData API gin-trusted-proxies: %s", strings.Split(trustedProxies, ","))
+		slog.Info("TibiaData API gin-trusted-proxies", "proxies", strings.Split(trustedProxies, ","))
 	} else {
 		_ = router.SetTrustedProxies(nil)
 	}
 
 	// Set the TibiaData restriction mode
 	TibiaDataRestrictionMode = getEnvAsBool("TIBIADATA_RESTRICTION_MODE", false)
-	log.Printf("[info] TibiaData API restriction-mode: %t", TibiaDataRestrictionMode)
+	slog.Info("TibiaData API restriction-mode", "enabled", TibiaDataRestrictionMode)
 
 	// Set the ping endpoint
 	router.GET("/ping", func(c *gin.Context) {
@@ -282,23 +280,22 @@ func runWebServer() {
 	// Run a go routine that will receive the shutdown input
 	go func() {
 		<-quit
-		log.Println("[info] TibiaData API received shutdown input")
+		slog.Info("TibiaData API received shutdown input")
 		if err := server.Close(); err != nil {
-			log.Fatal("[error] TibiaData API server close error:", err)
+			tibiaDataLogFatal("TibiaData API server close error", err)
 		}
 	}()
 
 	// setting readyz endpoint to true
 	isReady.Store(true)
 
-	log.Println("[info] TibiaData API starting webserver")
+	slog.Info("TibiaData API starting webserver")
 
-	// Run the server
 	if err := server.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
-			log.Println("[info] TibiaData API server gracefully shut down")
+			slog.Info("TibiaData API server gracefully shut down")
 		} else {
-			log.Fatal("[error] TibiaData API server closed unexpectedly")
+			tibiaDataLogFatal("TibiaData API server closed unexpectedly", err)
 		}
 	}
 }
@@ -1190,7 +1187,10 @@ func TibiaDataErrorHandler(c *gin.Context, err error, httpCode int) {
 
 		info.Status.Message = err.Error()
 
-		log.Printf("[TibiaDataErrorHandler] HTTPCode: %d], Message: %s", info.Status.HTTPCode, info.Status.Message)
+		slog.Warn("TibiaDataErrorHandler",
+			"http_code", info.Status.HTTPCode,
+			"message", info.Status.Message,
+		)
 	}
 
 	var output OutInformation
@@ -1262,12 +1262,12 @@ var TibiaFansiteAPIStatusURL = "https://fansiteapi.tibia.com/api/v1/status"
 func checkTibiaFansiteAPIStatus() {
 	res, err := tibiaDataClient.R().Get(TibiaFansiteAPIStatusURL)
 	if err != nil {
-		log.Printf("[warn] TibiaData API fansiteapi: status check failed: %s", err)
+		slog.Warn("TibiaData API fansiteapi status check failed", "error", err)
 		return
 	}
 
 	if res.StatusCode() != http.StatusOK {
-		log.Printf("[warn] TibiaData API fansiteapi: status check returned HTTP %d", res.StatusCode())
+		slog.Warn("TibiaData API fansiteapi status check returned unexpected HTTP status", "status", res.StatusCode())
 		return
 	}
 
@@ -1275,14 +1275,14 @@ func checkTibiaFansiteAPIStatus() {
 		IsAvailable bool `json:"isAvailable"`
 	}
 	if err := json.Unmarshal(res.Body(), &status); err != nil {
-		log.Printf("[warn] TibiaData API fansiteapi: status check response could not be parsed: %s", err)
+		slog.Warn("TibiaData API fansiteapi status check response could not be parsed", "error", err)
 		return
 	}
 
 	if status.IsAvailable {
-		log.Printf("[info] TibiaData API fansiteapi: status check reports available")
+		slog.Info("TibiaData API fansiteapi status check reports available")
 	} else {
-		log.Printf("[warn] TibiaData API fansiteapi: status check reports unavailable")
+		slog.Warn("TibiaData API fansiteapi status check reports unavailable")
 	}
 }
 
@@ -1290,21 +1290,20 @@ func checkTibiaFansiteAPIStatus() {
 // This should NOT be invoked if an error occured
 func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 	if c == nil {
-		log.Printf("[warning] %s executed successfully but request context is nil", s)
+		slog.Warn("handler executed successfully but request context is nil", "handler", s)
 		return
 	}
 
-	// print to log about request
 	if gin.IsDebugging() {
 		requestURI := ""
 		if c.Request != nil {
 			requestURI = c.Request.RequestURI
 		}
-		log.Println("[debug] " + s + " - (" + requestURI + ") returned data:")
+		slog.Debug("handler returned data", "handler", s, "request_uri", requestURI)
 		js, err := json.Marshal(j)
-		log.Printf("[debug] %s\n", js)
+		slog.Debug("handler response body", "body", string(js))
 		if err != nil {
-			log.Printf("[debug] the above had an error: %s\n", err)
+			slog.Debug("handler response marshal error", "error", err)
 		}
 	}
 
@@ -1313,7 +1312,7 @@ func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 		if c.Request != nil {
 			requestURI = c.Request.RequestURI
 		}
-		log.Println("[info] " + s + " - (" + requestURI + ") executed successfully.")
+		slog.Info("handler executed successfully", "handler", s, "request_uri", requestURI)
 	}
 
 	// return successful response
@@ -1328,8 +1327,11 @@ func TibiaDataAPIHandleCachedResponse(c *gin.Context, name string, data interfac
 			if c.Request != nil {
 				requestURI = c.Request.RequestURI
 			}
-			log.Printf("[debug] cache response: handler=%s request=%s max_age=%s",
-				name, requestURI, maxAge)
+			slog.Debug("cache response",
+				"handler", name,
+				"request_uri", requestURI,
+				"max_age", maxAge,
+			)
 		}
 	}
 	TibiaDataAPIHandleResponse(c, name, data)
@@ -1392,7 +1394,15 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 	}
 
 	if err != nil {
-		log.Printf("[error] TibiaDataHTMLDataCollector (Status: %s, URL: %s) in resp1: %s", res.Status(), res.Request.URL, err)
+		if res != nil && res.Request != nil {
+			slog.Error("TibiaDataHTMLDataCollector request failed",
+				"status", res.Status(),
+				"url", res.Request.URL,
+				"error", err,
+			)
+		} else {
+			slog.Error("TibiaDataHTMLDataCollector request failed", "error", err)
+		}
 		return "", err
 	}
 
@@ -1402,14 +1412,14 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 	case http.StatusForbidden:
 		// throttled request
 		LogMessage = "request throttled due to rate-limitation on tibia.com"
-		log.Printf("[warning] TibiaDataHTMLDataCollector: %s!", LogMessage)
+		slog.Warn("TibiaDataHTMLDataCollector", "message", LogMessage)
 		return "", validation.ErrStatusForbidden
 	case http.StatusFound:
 		// Check if page is in maintenance mode
 		location, _ := res.RawResponse.Location()
 		if location != nil && location.Host == "maintenance.tibia.com" {
 			LogMessage := "maintenance mode detected on tibia.com"
-			log.Printf("[info] TibiaDataHTMLDataCollector: %s!", LogMessage)
+			slog.Info("TibiaDataHTMLDataCollector", "message", LogMessage)
 			return "", validation.ErrorMaintenanceMode
 		}
 
@@ -1417,14 +1427,14 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 			"unknown error occurred on tibia.com (Status: %d, RequestURL: %s)",
 			http.StatusFound, res.Request.URL,
 		)
-		log.Printf("[error] TibiaDataHTMLDataCollector: %s!", LogMessage)
+		slog.Error("TibiaDataHTMLDataCollector", "message", LogMessage)
 		return "", validation.ErrStatusFound
 	default:
 		LogMessage = fmt.Sprintf(
 			"unknown error and status occurred on tibia.com (Status: %d, RequestURL: %s)",
 			res.StatusCode(), res.Request.URL,
 		)
-		log.Printf("[error] TibiaDataHTMLDataCollector: %s!", LogMessage)
+		slog.Error("TibiaDataHTMLDataCollector", "message", LogMessage)
 		return "", validation.ErrStatusUnknown
 	}
 
@@ -1435,7 +1445,7 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 	// Load the HTML document
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(res.Body()))
 	if err != nil {
-		log.Printf("[error] TibiaDataHTMLDataCollector (URL: %s) error: %s", res.Request.URL, err)
+		slog.Error("TibiaDataHTMLDataCollector parse error", "url", res.Request.URL, "error", err)
 		return "", err
 	}
 

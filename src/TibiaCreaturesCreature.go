@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
@@ -161,7 +161,7 @@ func TibiaCreaturesCreatureImpl(race string, BoxContentHTML string, url string) 
 			}
 		}
 	} else {
-		log.Printf("[warning] TibiaCreaturesCreatureImpl called on invalid creature")
+		slog.Warn("TibiaCreaturesCreatureImpl called on invalid creature")
 		return CreatureResponse{}, validation.ErrorCreatureNotFound
 	}
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -32,24 +32,28 @@ type Debug struct {
 	BiggestSpellWordRuneCount           int    `json:"biggest_spell_word_rune_count"`
 }
 
-// TibiaDataRequestTraceLogger func - prints out trace information to log
+// TibiaDataRequestTraceLogger logs resty client trace details when DEBUG_MODE is enabled.
 func TibiaDataRequestTraceLogger(res *resty.Response, err error) {
-	log.Println("TRACE RESTY",
-		"\n~~~ TRACE INFO ~~~",
-		"\nDNSLookup      :", res.Request.TraceInfo().DNSLookup,
-		"\nConnTime       :", res.Request.TraceInfo().ConnTime,
-		"\nTCPConnTime    :", res.Request.TraceInfo().TCPConnTime,
-		"\nTLSHandshake   :", res.Request.TraceInfo().TLSHandshake,
-		"\nServerTime     :", res.Request.TraceInfo().ServerTime,
-		"\nResponseTime   :", res.Request.TraceInfo().ResponseTime,
-		"\nTotalTime      :", res.Request.TraceInfo().TotalTime,
-		"\nIsConnReused   :", res.Request.TraceInfo().IsConnReused,
-		"\nIsConnWasIdle  :", res.Request.TraceInfo().IsConnWasIdle,
-		"\nConnIdleTime   :", res.Request.TraceInfo().ConnIdleTime,
-		"\nRequestAttempt :", res.Request.TraceInfo().RequestAttempt,
-		"\nRemoteAddr     :", res.Request.TraceInfo().RemoteAddr.String(),
-		"\nError          :", err,
-		"\n==============================================================================")
+	if res == nil || res.Request == nil {
+		slog.Debug("resty trace", "error", err)
+		return
+	}
+	trace := res.Request.TraceInfo()
+	slog.Debug("resty trace",
+		"dns_lookup", trace.DNSLookup,
+		"conn_time", trace.ConnTime,
+		"tcp_conn_time", trace.TCPConnTime,
+		"tls_handshake", trace.TLSHandshake,
+		"server_time", trace.ServerTime,
+		"response_time", trace.ResponseTime,
+		"total_time", trace.TotalTime,
+		"conn_reused", trace.IsConnReused,
+		"conn_was_idle", trace.IsConnWasIdle,
+		"conn_idle_time", trace.ConnIdleTime,
+		"request_attempt", trace.RequestAttempt,
+		"remote_addr", trace.RemoteAddr.String(),
+		"error", err,
+	)
 }
 
 // debugHandler returns some debug information
