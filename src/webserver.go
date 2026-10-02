@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -132,8 +133,8 @@ func runWebServer() {
 	slog.Info("TibiaData API gin-mode", "mode", gin.Mode())
 
 	router := gin.New()
-	router.Use(gin.Recovery())
 	router.Use(ginAccessLogMiddleware())
+	router.Use(ginRecoveryMiddleware())
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// Set 404 not found page
@@ -1187,7 +1188,7 @@ func TibiaDataErrorHandler(c *gin.Context, err error, httpCode int) {
 
 		info.Status.Message = err.Error()
 
-		slog.Warn("TibiaDataErrorHandler",
+		slog.Debug("TibiaDataErrorHandler",
 			"http_code", info.Status.HTTPCode,
 			"message", info.Status.Message,
 		)
@@ -1294,7 +1295,7 @@ func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 		return
 	}
 
-	if gin.IsDebugging() {
+	if slog.Default().Enabled(context.Background(), slog.LevelDebug) {
 		requestURI := ""
 		if c.Request != nil {
 			requestURI = c.Request.RequestURI

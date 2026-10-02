@@ -38,19 +38,49 @@ func TestGinAccessLogMiddleware(t *testing.T) {
 
 	router := gin.New()
 	router.Use(ginAccessLogMiddleware())
-	router.GET("/ping", func(c *gin.Context) {
+	router.GET("/items", func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	req := httptest.NewRequest(http.MethodGet, "/items", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, buf.String(), "http request")
-	assert.Contains(t, buf.String(), "/ping")
+	assert.Contains(t, buf.String(), "/items")
 }
 
 func TestTraceLogAttrsEmptyWithoutTracing(t *testing.T) {
 	assert.Empty(t, traceLogAttrs(context.Background()))
+}
+
+func captureLogs(t *testing.T, level slog.Level) *bytes.Buffer {
+	var buf bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(newTibiaDataLogHandler(&buf, "text", level)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	return &buf
+}
+
+func TestGinAccessLogLevels(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	buf := captureLogs(t, slog.LevelInfo)
+
+	router := gin.New()
+	router.Use(ginAccessLogMiddleware(), ginRecoveryMiddleware())
+	router.GET("/ping", func(c *gin.Context) { c.Status(http.StatusOK) })
+	router.GET("/boom", func(c *gin.Context) { panic("boom") })
+
+	for _, path := range []string{"/ping", "/missing", "/boom"} {
+		router.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, path, nil))
+	}
+
+	out := buf.String()
+	assert.NotContains(t, out, "path=/ping")
+	assert.Contains(t, out, "level=WARN msg=\"http request\"")
+	assert.Contains(t, out, "status=404")
+	assert.Contains(t, out, "level=ERROR msg=\"panic recovered\"")
+	assert.Contains(t, out, "level=ERROR msg=\"http request\"")
+	assert.Contains(t, out, "status=500")
 }
