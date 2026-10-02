@@ -112,20 +112,20 @@ docker run -p 127.0.0.1:80:8080/tcp --rm -it tibiadata
 
 ### Environment variables
 
-The following environment variables can be used to configure the API. The API listens on port `8080` (not configurable).
+The following environment variables can be used to configure the API.
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `DEBUG_MODE` | `false` | Enables more verbose (debug) logging. |
 | `GIN_MODE` | `release` | Gin mode: `release`, `debug` or `test`. |
 | `GIN_TRUSTED_PROXIES` | _(none)_ | Comma-separated list of trusted proxies (IPs/CIDRs). When unset, no proxies are trusted. |
-| `TIBIADATA_RESTRICTION_MODE` | `false` | Enables restriction mode, which disables expensive requests (e.g. highscores with vocation `all`). |
 | `TIBIADATA_CACHE_AWARENESS` | `true` | Makes the API aware of upstream cache headers. |
 | `TIBIADATA_EDITION` | `open-source` | Edition name reported by the API. |
 | `TIBIADATA_HOST` | _(empty)_ | Hostname used when generating API URLs (e.g. in news and the OpenAPI docs). |
 | `TIBIADATA_PROTOCOL` | `https` | Protocol used together with `TIBIADATA_HOST` when generating API URLs. |
 | `TIBIADATA_PROXY` | `www.tibia.com` | Domain to fetch data from instead of `www.tibia.com`, e.g. a caching proxy. |
 | `TIBIADATA_PROXY_PROTOCOL` | `https` | Protocol for `TIBIADATA_PROXY` (`http` or `https`). Only used when `TIBIADATA_PROXY` is set. |
+| `TIBIADATA_RESTRICTION_MODE` | `false` | Enables restriction mode, which disables expensive requests (e.g. highscores with vocation `all`). |
 | `TIBIA_FANSITEAPI_TOKEN` | _(empty)_ | Token for the official Tibia Fansite API. Enables the [Fansite API](#fansite-api) when valid. |
 
 ### Deployment note
