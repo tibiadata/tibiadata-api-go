@@ -119,6 +119,7 @@ The following environment variables can be used to configure the API.
 | `DEBUG_MODE` | `false` | Enables more verbose (debug) logging. |
 | `GIN_MODE` | `release` | Gin mode: `release`, `debug` or `test`. |
 | `GIN_TRUSTED_PROXIES` | _(none)_ | Comma-separated list of trusted proxies (IPs/CIDRs). When unset, no proxies are trusted. |
+| `TIBIADATA_CACHE_CONTROL_HEADERS` | `true` | Adds fixed, endpoint-specific `Cache-Control` headers to successful data responses (see below). |
 | `TIBIADATA_EDITION` | `open-source` | Edition name reported by the API. |
 | `TIBIADATA_HOST` | _(empty)_ | Hostname used when generating API URLs (e.g. in news and the OpenAPI docs). |
 | `TIBIADATA_PROTOCOL` | `https` | Protocol used together with `TIBIADATA_HOST` when generating API URLs. |
@@ -133,7 +134,7 @@ You should consider to add a layer in front of this application, so you can do c
 
 We do so at least by using [Kong](https://github.com/Kong/kong) API Gateway, which solves features like caching, rate-limiting, authentication and more.
 
-Successful data responses include a `Cache-Control` header with fixed, endpoint-specific cache lifetimes: characters and houses 300 seconds, guilds 120 seconds, highscores and news 900 seconds, and worlds 60 seconds. Both `max-age` and `s-maxage` use the configured lifetime; upstream `Age`, `Date`, and `Last-Modified` headers do not affect it.
+Successful data responses include a `Cache-Control` header with fixed, endpoint-specific cache lifetimes: characters and houses 300 seconds, guilds 120 seconds, highscores and news 900 seconds, and worlds 60 seconds. Both `max-age` and `s-maxage` use the configured lifetime; upstream `Age`, `Date`, and `Last-Modified` headers do not affect it. Set `TIBIADATA_CACHE_CONTROL_HEADERS=false` to disable them.
 
 ## API documentation
 

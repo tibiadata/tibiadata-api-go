@@ -18,7 +18,7 @@ var (
 	TibiaDataAPIversion      int = 4
 	TibiaDataDebug           bool
 	TibiaDataRestrictionMode bool
-	TibiaDataCacheAwareness  bool = true
+	TibiaDataCacheControl    bool = true
 
 	// TibiaData app settings
 	TibiaDataAPIDetails APIDetails // containing information from build
@@ -131,8 +131,8 @@ func TibiaDataInitializer() {
 		}
 	}
 
-	TibiaDataCacheAwareness = getEnvAsBool("TIBIADATA_CACHE_AWARENESS", true)
-	log.Printf("[info] TibiaData API cache-awareness: %t", TibiaDataCacheAwareness)
+	TibiaDataCacheControl = getEnvAsBool("TIBIADATA_CACHE_CONTROL_HEADERS", true)
+	log.Printf("[info] TibiaData API cache-control headers: %t", TibiaDataCacheControl)
 
 	// Adding information of host
 	if isEnvExist("TIBIADATA_HOST") {

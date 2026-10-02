@@ -222,13 +222,13 @@ func runWebServer() {
 
 		// Tibia highscores
 		v4.GET("/highscores/:world", func(c *gin.Context) {
-			if TibiaDataCacheAwareness {
+			if TibiaDataCacheControl {
 				c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
 			}
 			c.Redirect(http.StatusMovedPermanently, v4.BasePath()+"/highscores/"+c.Param("world")+"/experience/"+TibiaDataDefaultVoc+"/1")
 		})
 		v4.GET("/highscores/:world/:category", func(c *gin.Context) {
-			if TibiaDataCacheAwareness {
+			if TibiaDataCacheControl {
 				c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
 			}
 			c.Redirect(http.StatusMovedPermanently, v4.BasePath()+"/highscores/"+c.Param("world")+"/"+c.Param("category")+"/"+TibiaDataDefaultVoc+"/1")
@@ -1223,7 +1223,7 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 	}
 
 	// return jsonData
-	if TibiaDataCacheAwareness && tibiaDataRequest.CacheMaxAge > 0 {
+	if TibiaDataCacheControl && tibiaDataRequest.CacheMaxAge > 0 {
 		TibiaDataAPIHandleCachedResponse(c, handlerName, jsonData, tibiaDataRequest.CacheMaxAge)
 		return
 	}
@@ -1321,7 +1321,7 @@ func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 }
 
 func TibiaDataAPIHandleCachedResponse(c *gin.Context, name string, data interface{}, maxAge time.Duration) {
-	if TibiaDataCacheAwareness && c != nil && maxAge > 0 {
+	if TibiaDataCacheControl && c != nil && maxAge > 0 {
 		c.Header(cacheControlHeader, tibiaDataCacheControlValue(maxAge))
 		if TibiaDataDebug {
 			requestURI := ""

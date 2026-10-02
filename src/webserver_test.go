@@ -476,9 +476,9 @@ func TestTibiaDataAPIHandleCachedResponse(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v4/character/Test", nil)
 
-	previousCacheAwareness := TibiaDataCacheAwareness
-	TibiaDataCacheAwareness = true
-	t.Cleanup(func() { TibiaDataCacheAwareness = previousCacheAwareness })
+	previousCacheAwareness := TibiaDataCacheControl
+	TibiaDataCacheControl = true
+	t.Cleanup(func() { TibiaDataCacheControl = previousCacheAwareness })
 
 	for _, test := range []struct {
 		name        string
@@ -506,12 +506,12 @@ func TestTibiaDataAPIHandleCachedResponse(t *testing.T) {
 	w = httptest.NewRecorder()
 	c, _ = gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v4/character/Test", nil)
-	TibiaDataCacheAwareness = false
+	TibiaDataCacheControl = false
 	TibiaDataAPIHandleCachedResponse(c, "test", gin.H{"ok": true}, 300*time.Second)
 	assert.Empty(t, w.Header().Get("Cache-Control"))
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	TibiaDataCacheAwareness = true
+	TibiaDataCacheControl = true
 	w = httptest.NewRecorder()
 	c, _ = gin.CreateTestContext(w)
 	c.Request = httptest.NewRequest(http.MethodGet, "/v4/character/Test", nil)
