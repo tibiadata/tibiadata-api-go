@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"sort"
@@ -693,7 +693,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					}
 
 				default:
-					log.Println("LEFT OVER: `" + RowName + "` = `" + RowData + "`")
+					slog.Debug("character parse leftover row", "name", RowName, "data", RowData)
 				}
 			})
 		case "Account Badges":
