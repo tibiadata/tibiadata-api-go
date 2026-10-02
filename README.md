@@ -119,7 +119,6 @@ The following environment variables can be used to configure the API.
 | `DEBUG_MODE` | `false` | Enables more verbose (debug) logging. |
 | `GIN_MODE` | `release` | Gin mode: `release`, `debug` or `test`. |
 | `GIN_TRUSTED_PROXIES` | _(none)_ | Comma-separated list of trusted proxies (IPs/CIDRs). When unset, no proxies are trusted. |
-| `TIBIADATA_CACHE_AWARENESS` | `true` | Makes the API aware of upstream cache headers. |
 | `TIBIADATA_EDITION` | `open-source` | Edition name reported by the API. |
 | `TIBIADATA_HOST` | _(empty)_ | Hostname used when generating API URLs (e.g. in news and the OpenAPI docs). |
 | `TIBIADATA_PROTOCOL` | `https` | Protocol used together with `TIBIADATA_HOST` when generating API URLs. |
