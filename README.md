@@ -124,6 +124,8 @@ The following environment variables can be used to configure the API.
 | `TIBIADATA_HOST` | _(empty)_ | Hostname used when generating API URLs (e.g. in news and the OpenAPI docs). |
 | `TIBIADATA_LOG_FORMAT` | `text` | Log output format: `text` or `json`. |
 | `TIBIADATA_LOG_LEVEL` | `info` (or `debug` when `DEBUG_MODE=true` and unset) | Application log level: `debug`, `info`, `warn`, `error`. |
+| `TIBIADATA_LOG_REQUEST_ID_HEADER` | _(empty)_ | Request header whose value is logged as `request_id` (for example, `Cf-Ray`); unset to disable. |
+| `TIBIADATA_LOG_CORRELATION_ID_HEADER` | _(empty)_ | Request header whose value is logged as `correlation_id` (for example, `X-Correlation-ID`); unset to disable. |
 | `TIBIADATA_PROTOCOL` | `https` | Protocol used together with `TIBIADATA_HOST` when generating API URLs. |
 | `TIBIADATA_PROXY` | `www.tibia.com` | Domain to fetch data from instead of `www.tibia.com`, e.g. a caching proxy. |
 | `TIBIADATA_PROXY_PROTOCOL` | `https` | Protocol for `TIBIADATA_PROXY` (`http` or `https`). Only used when `TIBIADATA_PROXY` is set. |
