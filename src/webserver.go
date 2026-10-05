@@ -1164,17 +1164,29 @@ func TibiaDataErrorHandler(c *gin.Context, err error, httpCode int) {
 
 	switch t := err.(type) {
 	case validation.Error:
-		if httpCode == 0 {
-			if t.Code() == 10 || t.Code() == 11 {
-				httpCode = http.StatusInternalServerError
-			} else {
-				httpCode = http.StatusBadRequest
+		// Missing resources should be 404, not 400/502.
+		switch t {
+		case validation.ErrorWorldDoesNotExist,
+			validation.ErrorHouseDoesNotExist,
+			validation.ErrorTownDoesNotExist,
+			validation.ErrorCharacterNotFound,
+			validation.ErrorCreatureNotFound,
+			validation.ErrorSpellNotFound,
+			validation.ErrorGuildNotFound:
+			httpCode = http.StatusNotFound
+		default:
+			if httpCode == 0 {
+				if t.Code() == 10 || t.Code() == 11 {
+					httpCode = http.StatusInternalServerError
+				} else {
+					httpCode = http.StatusBadRequest
+				}
 			}
-		}
 
-		// An error occurred at tibia.com
-		if t.Code() > 20000 {
-			httpCode = http.StatusBadGateway
+			// Upstream tibia.com failures (rate limit, maintenance, unknown)
+			if t.Code() > 20000 {
+				httpCode = http.StatusBadGateway
+			}
 		}
 
 		info.Status.HTTPCode = httpCode

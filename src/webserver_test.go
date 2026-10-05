@@ -261,6 +261,16 @@ func TestErrorHandler(t *testing.T) {
 
 	w = httptest.NewRecorder()
 	c, _ = gin.CreateTestContext(w)
+	TibiaDataErrorHandler(c, validation.ErrorWorldDoesNotExist, http.StatusBadRequest)
+	assert.Equal(http.StatusNotFound, w.Code)
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	TibiaDataErrorHandler(c, validation.ErrorCharacterNotFound, 0)
+	assert.Equal(http.StatusNotFound, w.Code)
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
 	TibiaDataErrorHandler(c, errors.New("test error"), 0)
 	assert.Equal(http.StatusBadGateway, w.Code)
 
