@@ -111,12 +111,12 @@ func TibiaDataInitializer() {
 		TibiaFansiteToken = getEnv("TIBIA_FANSITEAPI_TOKEN", "")
 		if err := validateTibiaFansiteToken(TibiaFansiteToken); err == nil {
 			TibiaFansiteAPI = true
-			slog.Info("TibiaData API fansiteapi enabled")
 		} else {
 			TibiaFansiteToken = ""
 			TibiaFansiteAPI = false
 			slog.Warn("TibiaData API fansiteapi token is invalid", "error", err)
 		}
+		slog.Info("TibiaData API fansiteapi", "enabled", TibiaFansiteAPI)
 	}
 
 	TibiaDataCacheControl = getEnvAsBool("TIBIADATA_CACHE_CONTROL_HEADERS", true)
