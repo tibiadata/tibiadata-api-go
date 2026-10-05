@@ -30,7 +30,7 @@ const (
 // Run is used to load data from the assets JSON file
 func Run(userAgent string) (TibiaMapping, error) {
 	// Logging the start of tibiamapping
-	slog.Info("Tibia Mapping is running")
+	slog.Info("TibiaData API assets mapping running")
 
 	// Setting up resty client
 	client := resty.New()
@@ -69,8 +69,8 @@ func Run(userAgent string) (TibiaMapping, error) {
 	}
 
 	// Checking if the response code was OK
-	if res.StatusCode() != http.StatusOK {
-		return TibiaMapping{}, fmt.Errorf("sha256 status code %d", res.StatusCode())
+	if sha256.StatusCode() != http.StatusOK {
+		return TibiaMapping{}, fmt.Errorf("sha256 status code %d", sha256.StatusCode())
 	}
 
 	// Making the GET request to the sha512 file
@@ -80,12 +80,12 @@ func Run(userAgent string) (TibiaMapping, error) {
 	}
 
 	// Checking if the response code was OK
-	if res.StatusCode() != http.StatusOK {
-		return TibiaMapping{}, fmt.Errorf("sha512 status code %d", res.StatusCode())
+	if sha512.StatusCode() != http.StatusOK {
+		return TibiaMapping{}, fmt.Errorf("sha512 status code %d", sha512.StatusCode())
 	}
 
 	// Log that Tibia Mapping has been successfully completed
-	slog.Info("Tibia Mapping completed")
+	slog.Info("TibiaData API assets mapping completed")
 
 	return TibiaMapping{
 		RawData:   res.Body(),
