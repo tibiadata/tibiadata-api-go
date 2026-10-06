@@ -1164,33 +1164,7 @@ func TibiaDataErrorHandler(c *gin.Context, err error, httpCode int) {
 
 	switch t := err.(type) {
 	case validation.Error:
-		// Missing resources should be 404, not 400/502.
-		switch t {
-		case validation.ErrorWorldDoesNotExist,
-			validation.ErrorVocationDoesNotExist,
-			validation.ErrorHighscoreCategoryDoesNotExist,
-			validation.ErrorHouseDoesNotExist,
-			validation.ErrorTownDoesNotExist,
-			validation.ErrorCharacterNotFound,
-			validation.ErrorCreatureNotFound,
-			validation.ErrorSpellNotFound,
-			validation.ErrorGuildNotFound:
-			httpCode = http.StatusNotFound
-		default:
-			if httpCode == 0 {
-				if t.Code() == 10 || t.Code() == 11 {
-					httpCode = http.StatusInternalServerError
-				} else {
-					httpCode = http.StatusBadRequest
-				}
-			}
-
-			// Upstream tibia.com failures (rate limit, maintenance, unknown)
-			if t.Code() > 20000 {
-				httpCode = http.StatusBadGateway
-			}
-		}
-
+		httpCode = tibiaDataValidationErrorHTTPCode(t, httpCode)
 		info.Status.HTTPCode = httpCode
 		info.Status.Error = t.Code()
 		info.Status.Message = t.Error()
@@ -1212,6 +1186,45 @@ func TibiaDataErrorHandler(c *gin.Context, err error, httpCode int) {
 	output.Information = info
 
 	c.JSON(httpCode, output)
+}
+
+func tibiaDataValidationErrorHTTPCode(err validation.Error, httpCode int) int {
+	if tibiaDataValidationErrorIsNotFound(err) {
+		return http.StatusNotFound
+	}
+
+	// Upstream tibia.com failures (rate limit, maintenance, unknown)
+	if err.Code() > 20000 {
+		return http.StatusBadGateway
+	}
+
+	if httpCode != 0 {
+		return httpCode
+	}
+
+	switch err.Code() {
+	case 10, 11:
+		return http.StatusInternalServerError
+	default:
+		return http.StatusBadRequest
+	}
+}
+
+func tibiaDataValidationErrorIsNotFound(err validation.Error) bool {
+	switch err {
+	case validation.ErrorWorldDoesNotExist,
+		validation.ErrorVocationDoesNotExist,
+		validation.ErrorHighscoreCategoryDoesNotExist,
+		validation.ErrorHouseDoesNotExist,
+		validation.ErrorTownDoesNotExist,
+		validation.ErrorCharacterNotFound,
+		validation.ErrorCreatureNotFound,
+		validation.ErrorSpellNotFound,
+		validation.ErrorGuildNotFound:
+		return true
+	default:
+		return false
+	}
 }
 
 func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestStruct, requestHandler func(string) (interface{}, error), handlerName string) {
