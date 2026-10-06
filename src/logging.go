@@ -15,21 +15,18 @@ import (
 )
 
 const (
-	requestIDHeaderEnv     = "TIBIADATA_LOG_REQUEST_ID_HEADER"
-	correlationIDHeaderEnv = "TIBIADATA_LOG_CORRELATION_ID_HEADER"
+	cloudflareRayHeader     = "Cf-Ray"
+	cloudflareRayLoggingEnv = "TIBIADATA_LOG_CF_RAY"
 )
 
-var (
-	requestIDHeader     string
-	correlationIDHeader string
-)
+var cloudflareRayLoggingEnabled bool
 
 func initTibiaDataLogging() {
 	level := tibiaDataLogLevel()
 	format := strings.ToLower(getEnv("TIBIADATA_LOG_FORMAT", "text"))
 	handler := newTibiaDataLogHandler(os.Stdout, format, level)
 	slog.SetDefault(slog.New(handler))
-	configureRequestLogHeaders()
+	configureCloudflareRayLogging()
 
 	if v := strings.TrimSpace(os.Getenv("TIBIADATA_LOG_LEVEL")); v != "" && !isKnownLogLevel(v) {
 		slog.Warn("unknown TIBIADATA_LOG_LEVEL, falling back to info", "value", v)
@@ -39,9 +36,8 @@ func initTibiaDataLogging() {
 	}
 }
 
-func configureRequestLogHeaders() {
-	requestIDHeader = strings.TrimSpace(os.Getenv(requestIDHeaderEnv))
-	correlationIDHeader = strings.TrimSpace(os.Getenv(correlationIDHeaderEnv))
+func configureCloudflareRayLogging() {
+	cloudflareRayLoggingEnabled = getEnvAsBool(cloudflareRayLoggingEnv, false)
 }
 
 func tibiaDataLogLevel() slog.Leveler {
@@ -89,18 +85,13 @@ func traceLogAttrs(ctx context.Context) []any {
 }
 
 func requestLogAttrs(r *http.Request) []any {
-	attrs := make([]any, 0, 4)
-	if requestIDHeader != "" {
-		if requestID := r.Header.Get(requestIDHeader); requestID != "" {
-			attrs = append(attrs, "request_id", requestID)
-		}
+	if !cloudflareRayLoggingEnabled {
+		return nil
 	}
-	if correlationIDHeader != "" {
-		if correlationID := r.Header.Get(correlationIDHeader); correlationID != "" {
-			attrs = append(attrs, "correlation_id", correlationID)
-		}
+	if requestID := r.Header.Get(cloudflareRayHeader); requestID != "" {
+		return []any{"request_id", requestID}
 	}
-	return attrs
+	return nil
 }
 
 func ginAccessLogMiddleware() gin.HandlerFunc {
