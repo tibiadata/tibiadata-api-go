@@ -67,8 +67,10 @@ func TestGinAccessLogMiddlewareIncludesConfiguredRequestIDs(t *testing.T) {
 	req.Header.Set(correlationIDHeader, "kong-request-456")
 	router.ServeHTTP(httptest.NewRecorder(), req)
 
-	assert.Contains(t, buf.String(), "request_id=abc123-FRA")
-	assert.Contains(t, buf.String(), "correlation_id=kong-request-456")
+	assert.Contains(t, buf.String(), "request_id="+obfuscatedRequestLogValue("abc123-FRA"))
+	assert.Contains(t, buf.String(), "correlation_id="+obfuscatedRequestLogValue("kong-request-456"))
+	assert.NotContains(t, buf.String(), "abc123-FRA")
+	assert.NotContains(t, buf.String(), "kong-request-456")
 }
 
 func TestGinAccessLogMiddlewareOmitsUnconfiguredRequestIDs(t *testing.T) {
@@ -91,6 +93,28 @@ func TestGinAccessLogMiddlewareOmitsUnconfiguredRequestIDs(t *testing.T) {
 	assert.NotContains(t, buf.String(), "correlation_id=")
 }
 
+func TestGinAccessLogMiddlewareOmitsSensitiveConfiguredHeaders(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	buf := captureLogs(t, slog.LevelInfo)
+	configureRequestLogHeadersForTest(t, "Authorization", "Cookie")
+
+	router := gin.New()
+	router.Use(ginAccessLogMiddleware())
+	router.GET("/items", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/items", nil)
+	req.Header.Set("Authorization", "test-auth-header-value")
+	req.Header.Set("Cookie", "session=secret-cookie")
+	router.ServeHTTP(httptest.NewRecorder(), req)
+
+	assert.NotContains(t, buf.String(), "test-auth-header-value")
+	assert.NotContains(t, buf.String(), "secret-cookie")
+	assert.NotContains(t, buf.String(), "request_id=")
+	assert.NotContains(t, buf.String(), "correlation_id=")
+}
+
 func TestGinRecoveryMiddlewareIncludesConfiguredRequestIDs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	buf := captureLogs(t, slog.LevelInfo)
@@ -107,8 +131,32 @@ func TestGinRecoveryMiddlewareIncludesConfiguredRequestIDs(t *testing.T) {
 	req.Header.Set(correlationIDHeader, "kong-request-456")
 	router.ServeHTTP(httptest.NewRecorder(), req)
 
-	assert.Contains(t, buf.String(), "request_id=abc123-FRA")
-	assert.Contains(t, buf.String(), "correlation_id=kong-request-456")
+	assert.Contains(t, buf.String(), "request_id="+obfuscatedRequestLogValue("abc123-FRA"))
+	assert.Contains(t, buf.String(), "correlation_id="+obfuscatedRequestLogValue("kong-request-456"))
+	assert.NotContains(t, buf.String(), "abc123-FRA")
+	assert.NotContains(t, buf.String(), "kong-request-456")
+}
+
+func TestGinRecoveryMiddlewareOmitsSensitiveConfiguredHeaders(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	buf := captureLogs(t, slog.LevelInfo)
+	configureRequestLogHeadersForTest(t, "Authorization", "Cookie")
+
+	router := gin.New()
+	router.Use(ginRecoveryMiddleware())
+	router.GET("/boom", func(c *gin.Context) {
+		panic("boom")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/boom", nil)
+	req.Header.Set("Authorization", "test-auth-header-value")
+	req.Header.Set("Cookie", "session=secret-cookie")
+	router.ServeHTTP(httptest.NewRecorder(), req)
+
+	assert.NotContains(t, buf.String(), "test-auth-header-value")
+	assert.NotContains(t, buf.String(), "secret-cookie")
+	assert.NotContains(t, buf.String(), "request_id=")
+	assert.NotContains(t, buf.String(), "correlation_id=")
 }
 
 func TestTraceLogAttrsEmptyWithoutTracing(t *testing.T) {

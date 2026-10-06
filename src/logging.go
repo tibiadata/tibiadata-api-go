@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,6 +19,14 @@ const (
 	requestIDHeaderEnv     = "TIBIADATA_LOG_REQUEST_ID_HEADER"
 	correlationIDHeaderEnv = "TIBIADATA_LOG_CORRELATION_ID_HEADER"
 )
+
+var safeRequestLogHeaders = map[string]struct{}{
+	"cf-ray":           {},
+	"traceparent":      {},
+	"x-correlation-id": {},
+	"x-request-id":     {},
+	"x-trace-id":       {},
+}
 
 var (
 	requestIDHeader     string
@@ -40,8 +49,21 @@ func initTibiaDataLogging() {
 }
 
 func configureRequestLogHeaders() {
-	requestIDHeader = strings.TrimSpace(os.Getenv(requestIDHeaderEnv))
-	correlationIDHeader = strings.TrimSpace(os.Getenv(correlationIDHeaderEnv))
+	requestIDHeader = configuredRequestLogHeader(requestIDHeaderEnv)
+	correlationIDHeader = configuredRequestLogHeader(correlationIDHeaderEnv)
+}
+
+func configuredRequestLogHeader(env string) string {
+	header := strings.TrimSpace(os.Getenv(env))
+	if header == "" {
+		return ""
+	}
+	if _, ok := safeRequestLogHeaders[strings.ToLower(header)]; ok {
+		return header
+	}
+
+	slog.Warn("unsupported request log header configuration ignored", "environment", env)
+	return ""
 }
 
 func tibiaDataLogLevel() slog.Leveler {
@@ -92,15 +114,20 @@ func requestLogAttrs(r *http.Request) []any {
 	attrs := make([]any, 0, 4)
 	if requestIDHeader != "" {
 		if requestID := r.Header.Get(requestIDHeader); requestID != "" {
-			attrs = append(attrs, "request_id", requestID)
+			attrs = append(attrs, "request_id", obfuscatedRequestLogValue(requestID))
 		}
 	}
 	if correlationIDHeader != "" {
 		if correlationID := r.Header.Get(correlationIDHeader); correlationID != "" {
-			attrs = append(attrs, "correlation_id", correlationID)
+			attrs = append(attrs, "correlation_id", obfuscatedRequestLogValue(correlationID))
 		}
 	}
 	return attrs
+}
+
+func obfuscatedRequestLogValue(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return fmt.Sprintf("%x", sum)
 }
 
 func ginAccessLogMiddleware() gin.HandlerFunc {
