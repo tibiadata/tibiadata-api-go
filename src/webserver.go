@@ -1167,6 +1167,8 @@ func TibiaDataErrorHandler(c *gin.Context, err error, httpCode int) {
 		// Missing resources should be 404, not 400/502.
 		switch t {
 		case validation.ErrorWorldDoesNotExist,
+			validation.ErrorVocationDoesNotExist,
+			validation.ErrorHighscoreCategoryDoesNotExist,
 			validation.ErrorHouseDoesNotExist,
 			validation.ErrorTownDoesNotExist,
 			validation.ErrorCharacterNotFound,

@@ -266,7 +266,42 @@ func TestErrorHandler(t *testing.T) {
 
 	w = httptest.NewRecorder()
 	c, _ = gin.CreateTestContext(w)
+	TibiaDataErrorHandler(c, validation.ErrorVocationDoesNotExist, http.StatusBadRequest)
+	assert.Equal(http.StatusNotFound, w.Code)
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	TibiaDataErrorHandler(c, validation.ErrorHighscoreCategoryDoesNotExist, 0)
+	assert.Equal(http.StatusNotFound, w.Code)
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	TibiaDataErrorHandler(c, validation.ErrorHouseDoesNotExist, http.StatusBadRequest)
+	assert.Equal(http.StatusNotFound, w.Code)
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	TibiaDataErrorHandler(c, validation.ErrorTownDoesNotExist, 0)
+	assert.Equal(http.StatusNotFound, w.Code)
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
 	TibiaDataErrorHandler(c, validation.ErrorCharacterNotFound, 0)
+	assert.Equal(http.StatusNotFound, w.Code)
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	TibiaDataErrorHandler(c, validation.ErrorCreatureNotFound, 0)
+	assert.Equal(http.StatusNotFound, w.Code)
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	TibiaDataErrorHandler(c, validation.ErrorSpellNotFound, 0)
+	assert.Equal(http.StatusNotFound, w.Code)
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+	TibiaDataErrorHandler(c, validation.ErrorGuildNotFound, 0)
 	assert.Equal(http.StatusNotFound, w.Code)
 
 	w = httptest.NewRecorder()
