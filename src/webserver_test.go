@@ -471,6 +471,20 @@ func TestTibiaDataJSONDataCollector(t *testing.T) {
 		assert.ErrorIs(err, validation.ErrStatusForbidden)
 	})
 
+	t.Run("not found", func(t *testing.T) {
+		assert := assert.New(t)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		TibiaFansiteToken = "test-token"
+		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		assert.Empty(body)
+		assert.ErrorIs(err, validation.ErrorCharacterNotFound)
+	})
+
 	t.Run("unknown status", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -493,6 +507,40 @@ func TestTibiaDataJSONDataCollector(t *testing.T) {
 		assert.Empty(body)
 		assert.Error(err)
 	})
+}
+
+func TestTibiaDataRequestHandlerReturnsNotFoundForMissingFansiteCharacter(t *testing.T) {
+	prevToken := TibiaFansiteToken
+	TibiaFansiteToken = "test-token"
+	t.Cleanup(func() { TibiaFansiteToken = prevToken })
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	tibiaDataRequestHandler(
+		c,
+		TibiaDataRequestStruct{
+			URL:           server.URL,
+			UseFansiteAPI: true,
+		},
+		func(string) (interface{}, error) {
+			t.Fatal("request handler should not be called for a missing character")
+			return nil, nil
+		},
+		"test",
+	)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	var response OutInformation
+	if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &response)) {
+		assert.Equal(t, http.StatusNotFound, response.Information.Status.HTTPCode)
+		assert.Equal(t, validation.ErrorCharacterNotFound.Code(), response.Information.Status.Error)
+	}
 }
 
 func TestTibiaDataHTMLDataCollectorReturnsBody(t *testing.T) {

@@ -1260,6 +1260,8 @@ func TibiaDataJSONDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 	switch res.StatusCode() {
 	case http.StatusOK:
 		return string(res.Body()), nil
+	case http.StatusNotFound:
+		return "", validation.ErrorCharacterNotFound
 	case http.StatusForbidden:
 		return "", validation.ErrStatusForbidden
 	default:
