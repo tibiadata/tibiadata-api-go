@@ -18,6 +18,7 @@ import (
 const (
 	requestIDHeaderEnv     = "TIBIADATA_LOG_REQUEST_ID_HEADER"
 	correlationIDHeaderEnv = "TIBIADATA_LOG_CORRELATION_ID_HEADER"
+	headerValuesHashedEnv  = "TIBIADATA_LOG_HEADER_VALUES_HASHED"
 )
 
 var safeRequestLogHeaders = map[string]struct{}{
@@ -31,6 +32,7 @@ var safeRequestLogHeaders = map[string]struct{}{
 var (
 	requestIDHeader     string
 	correlationIDHeader string
+	headerValuesHashed  bool
 )
 
 func initTibiaDataLogging() {
@@ -51,6 +53,7 @@ func initTibiaDataLogging() {
 func configureRequestLogHeaders() {
 	requestIDHeader = configuredRequestLogHeader(requestIDHeaderEnv)
 	correlationIDHeader = configuredRequestLogHeader(correlationIDHeaderEnv)
+	headerValuesHashed = getEnvAsBool(headerValuesHashedEnv, true)
 }
 
 func configuredRequestLogHeader(env string) string {
@@ -114,15 +117,22 @@ func requestLogAttrs(r *http.Request) []any {
 	attrs := make([]any, 0, 4)
 	if requestIDHeader != "" {
 		if requestID := r.Header.Get(requestIDHeader); requestID != "" {
-			attrs = append(attrs, "request_id", obfuscatedRequestLogValue(requestID))
+			attrs = append(attrs, "request_id", requestLogValue(requestID))
 		}
 	}
 	if correlationIDHeader != "" {
 		if correlationID := r.Header.Get(correlationIDHeader); correlationID != "" {
-			attrs = append(attrs, "correlation_id", obfuscatedRequestLogValue(correlationID))
+			attrs = append(attrs, "correlation_id", requestLogValue(correlationID))
 		}
 	}
 	return attrs
+}
+
+func requestLogValue(value string) string {
+	if !headerValuesHashed {
+		return value
+	}
+	return obfuscatedRequestLogValue(value)
 }
 
 func obfuscatedRequestLogValue(value string) string {

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -54,7 +55,7 @@ func TestGinAccessLogMiddleware(t *testing.T) {
 func TestGinAccessLogMiddlewareIncludesConfiguredRequestIDs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	buf := captureLogs(t, slog.LevelInfo)
-	configureRequestLogHeadersForTest(t, "X-Request-ID", "X-Trace-ID")
+	configureRequestLogHeadersForTest(t, "X-Request-ID", "X-Trace-ID", true)
 
 	router := gin.New()
 	router.Use(ginAccessLogMiddleware())
@@ -76,7 +77,7 @@ func TestGinAccessLogMiddlewareIncludesConfiguredRequestIDs(t *testing.T) {
 func TestGinAccessLogMiddlewareOmitsUnconfiguredRequestIDs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	buf := captureLogs(t, slog.LevelInfo)
-	configureRequestLogHeadersForTest(t, "", "")
+	configureRequestLogHeadersForTest(t, "", "", true)
 
 	router := gin.New()
 	router.Use(ginAccessLogMiddleware())
@@ -96,7 +97,7 @@ func TestGinAccessLogMiddlewareOmitsUnconfiguredRequestIDs(t *testing.T) {
 func TestGinAccessLogMiddlewareOmitsSensitiveConfiguredHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	buf := captureLogs(t, slog.LevelInfo)
-	configureRequestLogHeadersForTest(t, "Authorization", "Cookie")
+	configureRequestLogHeadersForTest(t, "Authorization", "Cookie", true)
 
 	router := gin.New()
 	router.Use(ginAccessLogMiddleware())
@@ -118,7 +119,7 @@ func TestGinAccessLogMiddlewareOmitsSensitiveConfiguredHeaders(t *testing.T) {
 func TestGinRecoveryMiddlewareIncludesConfiguredRequestIDs(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	buf := captureLogs(t, slog.LevelInfo)
-	configureRequestLogHeadersForTest(t, "X-Request-ID", "X-Trace-ID")
+	configureRequestLogHeadersForTest(t, "X-Request-ID", "X-Trace-ID", true)
 
 	router := gin.New()
 	router.Use(ginRecoveryMiddleware())
@@ -140,7 +141,7 @@ func TestGinRecoveryMiddlewareIncludesConfiguredRequestIDs(t *testing.T) {
 func TestGinRecoveryMiddlewareOmitsSensitiveConfiguredHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	buf := captureLogs(t, slog.LevelInfo)
-	configureRequestLogHeadersForTest(t, "Authorization", "Cookie")
+	configureRequestLogHeadersForTest(t, "Authorization", "Cookie", true)
 
 	router := gin.New()
 	router.Use(ginRecoveryMiddleware())
@@ -163,11 +164,32 @@ func TestTraceLogAttrsEmptyWithoutTracing(t *testing.T) {
 	assert.Empty(t, traceLogAttrs(context.Background()))
 }
 
-func configureRequestLogHeadersForTest(t *testing.T, requestHeader, correlationHeader string) {
+func TestGinAccessLogMiddlewareCanLogRawConfiguredRequestIDs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	buf := captureLogs(t, slog.LevelInfo)
+	configureRequestLogHeadersForTest(t, "Cf-Ray", "X-Correlation-ID", false)
+
+	router := gin.New()
+	router.Use(ginAccessLogMiddleware())
+	router.GET("/items", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/items", nil)
+	req.Header.Set(requestIDHeader, "cf-ray-123")
+	req.Header.Set(correlationIDHeader, "kong-correlation-456")
+	router.ServeHTTP(httptest.NewRecorder(), req)
+
+	assert.Contains(t, buf.String(), "request_id=cf-ray-123")
+	assert.Contains(t, buf.String(), "correlation_id=kong-correlation-456")
+}
+
+func configureRequestLogHeadersForTest(t *testing.T, requestHeader, correlationHeader string, hashValues bool) {
 	t.Helper()
 	t.Cleanup(configureRequestLogHeaders)
 	t.Setenv(requestIDHeaderEnv, requestHeader)
 	t.Setenv(correlationIDHeaderEnv, correlationHeader)
+	t.Setenv(headerValuesHashedEnv, strconv.FormatBool(hashValues))
 	configureRequestLogHeaders()
 }
 
