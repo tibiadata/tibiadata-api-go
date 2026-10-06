@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,32 +14,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	requestIDHeaderEnv     = "TIBIADATA_LOG_REQUEST_ID_HEADER"
-	correlationIDHeaderEnv = "TIBIADATA_LOG_CORRELATION_ID_HEADER"
-	headerValuesHashedEnv  = "TIBIADATA_LOG_HEADER_VALUES_HASHED"
-)
-
-var safeRequestLogHeaders = map[string]struct{}{
-	"cf-ray":           {},
-	"traceparent":      {},
-	"x-correlation-id": {},
-	"x-request-id":     {},
-	"x-trace-id":       {},
-}
-
-var (
-	requestIDHeader     string
-	correlationIDHeader string
-	headerValuesHashed  bool
-)
+const cloudflareRayHeader = "Cf-Ray"
 
 func initTibiaDataLogging() {
 	level := tibiaDataLogLevel()
 	format := strings.ToLower(getEnv("TIBIADATA_LOG_FORMAT", "text"))
 	handler := newTibiaDataLogHandler(os.Stdout, format, level)
 	slog.SetDefault(slog.New(handler))
-	configureRequestLogHeaders()
 
 	if v := strings.TrimSpace(os.Getenv("TIBIADATA_LOG_LEVEL")); v != "" && !isKnownLogLevel(v) {
 		slog.Warn("unknown TIBIADATA_LOG_LEVEL, falling back to info", "value", v)
@@ -48,25 +28,6 @@ func initTibiaDataLogging() {
 	if format != "text" && format != "json" {
 		slog.Warn("unknown TIBIADATA_LOG_FORMAT, falling back to text", "value", format)
 	}
-}
-
-func configureRequestLogHeaders() {
-	requestIDHeader = configuredRequestLogHeader(requestIDHeaderEnv)
-	correlationIDHeader = configuredRequestLogHeader(correlationIDHeaderEnv)
-	headerValuesHashed = getEnvAsBool(headerValuesHashedEnv, true)
-}
-
-func configuredRequestLogHeader(env string) string {
-	header := strings.TrimSpace(os.Getenv(env))
-	if header == "" {
-		return ""
-	}
-	if _, ok := safeRequestLogHeaders[strings.ToLower(header)]; ok {
-		return header
-	}
-
-	slog.Warn("unsupported request log header configuration ignored", "environment", env)
-	return ""
 }
 
 func tibiaDataLogLevel() slog.Leveler {
@@ -114,30 +75,10 @@ func traceLogAttrs(ctx context.Context) []any {
 }
 
 func requestLogAttrs(r *http.Request) []any {
-	attrs := make([]any, 0, 4)
-	if requestIDHeader != "" {
-		if requestID := r.Header.Get(requestIDHeader); requestID != "" {
-			attrs = append(attrs, "request_id", requestLogValue(requestID))
-		}
+	if requestID := r.Header.Get(cloudflareRayHeader); requestID != "" {
+		return []any{"request_id", requestID}
 	}
-	if correlationIDHeader != "" {
-		if correlationID := r.Header.Get(correlationIDHeader); correlationID != "" {
-			attrs = append(attrs, "correlation_id", requestLogValue(correlationID))
-		}
-	}
-	return attrs
-}
-
-func requestLogValue(value string) string {
-	if !headerValuesHashed {
-		return value
-	}
-	return obfuscatedRequestLogValue(value)
-}
-
-func obfuscatedRequestLogValue(value string) string {
-	sum := sha256.Sum256([]byte(value))
-	return fmt.Sprintf("%x", sum)
+	return nil
 }
 
 func ginAccessLogMiddleware() gin.HandlerFunc {
