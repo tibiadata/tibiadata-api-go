@@ -14,13 +14,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const cloudflareRayHeader = "Cf-Ray"
+const (
+	cloudflareRayHeader     = "Cf-Ray"
+	cloudflareRayLoggingEnv = "TIBIADATA_LOG_CF_RAY"
+)
+
+var cloudflareRayLoggingEnabled bool
 
 func initTibiaDataLogging() {
 	level := tibiaDataLogLevel()
 	format := strings.ToLower(getEnv("TIBIADATA_LOG_FORMAT", "text"))
 	handler := newTibiaDataLogHandler(os.Stdout, format, level)
 	slog.SetDefault(slog.New(handler))
+	configureCloudflareRayLogging()
 
 	if v := strings.TrimSpace(os.Getenv("TIBIADATA_LOG_LEVEL")); v != "" && !isKnownLogLevel(v) {
 		slog.Warn("unknown TIBIADATA_LOG_LEVEL, falling back to info", "value", v)
@@ -28,6 +34,10 @@ func initTibiaDataLogging() {
 	if format != "text" && format != "json" {
 		slog.Warn("unknown TIBIADATA_LOG_FORMAT, falling back to text", "value", format)
 	}
+}
+
+func configureCloudflareRayLogging() {
+	cloudflareRayLoggingEnabled = getEnvAsBool(cloudflareRayLoggingEnv, false)
 }
 
 func tibiaDataLogLevel() slog.Leveler {
@@ -75,6 +85,9 @@ func traceLogAttrs(ctx context.Context) []any {
 }
 
 func requestLogAttrs(r *http.Request) []any {
+	if !cloudflareRayLoggingEnabled {
+		return nil
+	}
 	if requestID := r.Header.Get(cloudflareRayHeader); requestID != "" {
 		return []any{"request_id", requestID}
 	}

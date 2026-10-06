@@ -122,6 +122,7 @@ The following environment variables can be used to configure the API.
 | `TIBIADATA_CACHE_CONTROL_HEADERS` | `true` | Adds fixed, endpoint-specific `Cache-Control` headers to successful data responses (see below). |
 | `TIBIADATA_EDITION` | `open-source` | Edition name reported by the API. |
 | `TIBIADATA_HOST` | _(empty)_ | Hostname used when generating API URLs (e.g. in news and the OpenAPI docs). |
+| `TIBIADATA_LOG_CF_RAY` | `false` | Logs Cloudflare's `Cf-Ray` header as `request_id` when `true`. Enable only when the API is reachable exclusively through Cloudflare. |
 | `TIBIADATA_LOG_FORMAT` | `text` | Log output format: `text` or `json`. |
 | `TIBIADATA_LOG_LEVEL` | `info` (or `debug` when `DEBUG_MODE=true` and unset) | Application log level: `debug`, `info`, `warn`, `error`. |
 | `TIBIADATA_PROTOCOL` | `https` | Protocol used together with `TIBIADATA_HOST` when generating API URLs. |
@@ -132,7 +133,7 @@ The following environment variables can be used to configure the API.
 
 ### Request correlation
 
-The API logs Cloudflare's `Cf-Ray` header as `request_id` when present. Restrict origin access to Cloudflare so that clients cannot send arbitrary `Cf-Ray` values directly to the API. Configure Kong to use the same header as its correlation ID; Kong configuration is not managed by this repository.
+Set `TIBIADATA_LOG_CF_RAY=true` to log Cloudflare's `Cf-Ray` header as `request_id` when present. Restrict origin access to Cloudflare so that clients cannot send arbitrary `Cf-Ray` values directly to the API. Configure Kong to use the same header as its correlation ID; Kong configuration is not managed by this repository.
 
 ### Deployment note
 

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -54,6 +55,7 @@ func TestGinAccessLogMiddleware(t *testing.T) {
 func TestGinAccessLogMiddlewareIncludesCloudflareRayID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	buf := captureLogs(t, slog.LevelInfo)
+	configureCloudflareRayLoggingForTest(t, true)
 
 	router := gin.New()
 	router.Use(ginAccessLogMiddleware())
@@ -71,6 +73,7 @@ func TestGinAccessLogMiddlewareIncludesCloudflareRayID(t *testing.T) {
 func TestGinAccessLogMiddlewareOmitsMissingCloudflareRayID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	buf := captureLogs(t, slog.LevelInfo)
+	configureCloudflareRayLoggingForTest(t, true)
 
 	router := gin.New()
 	router.Use(ginAccessLogMiddleware())
@@ -84,9 +87,28 @@ func TestGinAccessLogMiddlewareOmitsMissingCloudflareRayID(t *testing.T) {
 	assert.NotContains(t, buf.String(), "request_id=")
 }
 
+func TestGinAccessLogMiddlewareOmitsCloudflareRayIDWhenDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	buf := captureLogs(t, slog.LevelInfo)
+	configureCloudflareRayLoggingForTest(t, false)
+
+	router := gin.New()
+	router.Use(ginAccessLogMiddleware())
+	router.GET("/items", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/items", nil)
+	req.Header.Set(cloudflareRayHeader, "abc123-FRA")
+	router.ServeHTTP(httptest.NewRecorder(), req)
+
+	assert.NotContains(t, buf.String(), "request_id=")
+}
+
 func TestGinRecoveryMiddlewareIncludesCloudflareRayID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	buf := captureLogs(t, slog.LevelInfo)
+	configureCloudflareRayLoggingForTest(t, true)
 
 	router := gin.New()
 	router.Use(ginRecoveryMiddleware())
@@ -104,6 +126,7 @@ func TestGinRecoveryMiddlewareIncludesCloudflareRayID(t *testing.T) {
 func TestGinRecoveryMiddlewareOmitsMissingCloudflareRayID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	buf := captureLogs(t, slog.LevelInfo)
+	configureCloudflareRayLoggingForTest(t, true)
 
 	router := gin.New()
 	router.Use(ginRecoveryMiddleware())
@@ -114,6 +137,13 @@ func TestGinRecoveryMiddlewareOmitsMissingCloudflareRayID(t *testing.T) {
 	router.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/boom", nil))
 
 	assert.NotContains(t, buf.String(), "request_id=")
+}
+
+func configureCloudflareRayLoggingForTest(t *testing.T, enabled bool) {
+	t.Helper()
+	t.Cleanup(configureCloudflareRayLogging)
+	t.Setenv(cloudflareRayLoggingEnv, strconv.FormatBool(enabled))
+	configureCloudflareRayLogging()
 }
 
 func TestTraceLogAttrsEmptyWithoutTracing(t *testing.T) {
