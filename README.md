@@ -133,7 +133,7 @@ The following environment variables can be used to configure the API.
 
 ### Request correlation
 
-Set `TIBIADATA_LOG_CF_RAY=true` to log Cloudflare's `Cf-Ray` header as `request_id` when present. Restrict origin access to Cloudflare so that clients cannot send arbitrary `Cf-Ray` values directly to the API. Configure Kong to use the same header as its correlation ID; Kong configuration is not managed by this repository.
+Set `TIBIADATA_LOG_CF_RAY=true` to log Cloudflare's `Cf-Ray` header as `request_id` when present. Restrict origin access to Cloudflare so that clients cannot send arbitrary `Cf-Ray` values directly to the API.
 
 ### Deployment note
 
