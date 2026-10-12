@@ -18,7 +18,7 @@ require (
 	github.com/tibiadata/tibiadata-api-go/src/static v0.0.0-20260708000506-76c8bf3494d0
 	github.com/tibiadata/tibiadata-api-go/src/validation v0.0.0-20260708000506-76c8bf3494d0
 	golang.org/x/net v0.59.0
-	golang.org/x/text v0.42.0
+	golang.org/x/text v0.43.0
 )
 
 require (
