@@ -36,22 +36,22 @@ var (
 	TibiaFansiteToken string // the token used for accessing the Tibia Fansite API
 )
 
-// @title           TibiaData API
-// @version         edge
-// @description     This is the API documentation for the TibiaData API.
-// @description     The documentation contains version 3 and above.
-// @termsOfService  https://tibiadata.com/terms/
+//	@title			TibiaData API
+//	@version		edge
+//	@description	This is the API documentation for the TibiaData API.
+//	@description	The documentation contains version 3 and above.
+//	@termsOfService	https://tibiadata.com/terms/
 
-// @contact.name   TibiaData
-// @contact.url    https://tibiadata.com/contact/
-// @contact.email  tobias@tibiadata.com
+//	@contact.name	TibiaData
+//	@contact.url	https://tibiadata.com/contact/
+//	@contact.email	tobias@tibiadata.com
 
-// @license.name  MIT
-// @license.url   https://github.com/tibiadata/tibiadata-api-go/blob/main/LICENSE
+//	@license.name	MIT
+//	@license.url	https://github.com/tibiadata/tibiadata-api-go/blob/main/LICENSE
 
-// @schemes   http
-// @host      localhost:8080
-// @BasePath  /
+//	@schemes	http
+//	@host		localhost:8080
+//	@BasePath	/
 
 func init() {
 	initTibiaDataLogging()

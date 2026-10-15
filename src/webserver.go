@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -198,65 +199,7 @@ func runWebServer() {
 	})
 
 	// TibiaData API version 4 endpoints
-	v4 := router.Group("/v4")
-	{
-		// Tibia characters
-		v4.GET("/boostablebosses", tibiaBoostableBosses)
-
-		// Tibia characters
-		v4.GET("/character/:name", tibiaCharactersCharacter)
-
-		// Tibia creatures
-		v4.GET("/creature/:race", tibiaCreaturesCreature)
-		v4.GET("/creatures", tibiaCreaturesOverview)
-
-		// Tibia fansites
-		v4.GET("/fansites", tibiaFansites)
-
-		// Tibia guilds
-		v4.GET("/guild/:name", tibiaGuildsGuild)
-		// v4.GET("/guild/:name/events",TibiaGuildsGuildEvents)
-		// v4.GET("/guild/:name/wars",TibiaGuildsGuildWars)
-		v4.GET("/guilds/:world", tibiaGuildsOverview)
-
-		// Tibia highscores
-		v4.GET("/highscores/:world", func(c *gin.Context) {
-			if TibiaDataCacheControl {
-				c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
-			}
-			c.Redirect(http.StatusMovedPermanently, v4.BasePath()+"/highscores/"+c.Param("world")+"/experience/"+TibiaDataDefaultVoc+"/1")
-		})
-		v4.GET("/highscores/:world/:category", func(c *gin.Context) {
-			if TibiaDataCacheControl {
-				c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
-			}
-			c.Redirect(http.StatusMovedPermanently, v4.BasePath()+"/highscores/"+c.Param("world")+"/"+c.Param("category")+"/"+TibiaDataDefaultVoc+"/1")
-		})
-		v4.GET("/highscores/:world/:category/:vocation", tibiaHighscores)
-		v4.GET("/highscores/:world/:category/:vocation/:page", tibiaHighscores)
-
-		// Tibia houses
-		v4.GET("/house/:world/:house_id", tibiaHousesHouse)
-		v4.GET("/houses/:world/:town", tibiaHousesOverview)
-
-		// Tibia killstatistics
-		v4.GET("/killstatistics/:world", tibiaKillstatistics)
-
-		// Tibia news
-		v4.GET("/news/archive", tibiaNewslist)       // all categories (default 90 days)
-		v4.GET("/news/archive/:days", tibiaNewslist) // all categories
-		v4.GET("/news/id/:news_id", tibiaNews)       // shows one news entry
-		v4.GET("/news/latest", tibiaNewslist)        // only news and articles
-		v4.GET("/news/newsticker", tibiaNewslist)    // only news_ticker
-
-		// Tibia spells
-		v4.GET("/spell/:spell_id", tibiaSpellsSpell)
-		v4.GET("/spells", tibiaSpellsOverview)
-
-		// Tibia worlds
-		v4.GET("/world/:name", tibiaWorldsWorld)
-		v4.GET("/worlds", tibiaWorldsOverview)
-	}
+	registerAPIVersions(router)
 
 	// Container version details endpoint
 	router.GET("/versions", func(c *gin.Context) {
@@ -301,17 +244,78 @@ func runWebServer() {
 	}
 }
 
+func registerAPIVersions(router *gin.Engine) {
+	registerAPIVersionRoutes(router.Group("/v4"))
+	registerAPIVersionRoutes(router.Group("/v5"))
+}
+
+func registerAPIVersionRoutes(version *gin.RouterGroup) {
+	// Tibia characters
+	version.GET("/boostablebosses", tibiaBoostableBosses)
+	version.GET("/character/:name", tibiaCharactersCharacter)
+
+	// Tibia creatures
+	version.GET("/creature/:race", tibiaCreaturesCreature)
+	version.GET("/creatures", tibiaCreaturesOverview)
+
+	// Tibia fansites
+	version.GET("/fansites", tibiaFansites)
+
+	// Tibia guilds
+	version.GET("/guild/:name", tibiaGuildsGuild)
+	// version.GET("/guild/:name/events",TibiaGuildsGuildEvents)
+	// version.GET("/guild/:name/wars",TibiaGuildsGuildWars)
+	version.GET("/guilds/:world", tibiaGuildsOverview)
+
+	// Tibia highscores
+	version.GET("/highscores/:world", func(c *gin.Context) {
+		if TibiaDataCacheControl {
+			c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
+		}
+		c.Redirect(http.StatusMovedPermanently, version.BasePath()+"/highscores/"+c.Param("world")+"/experience/"+TibiaDataDefaultVoc+"/1")
+	})
+	version.GET("/highscores/:world/:category", func(c *gin.Context) {
+		if TibiaDataCacheControl {
+			c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
+		}
+		c.Redirect(http.StatusMovedPermanently, version.BasePath()+"/highscores/"+c.Param("world")+"/"+c.Param("category")+"/"+TibiaDataDefaultVoc+"/1")
+	})
+	version.GET("/highscores/:world/:category/:vocation", tibiaHighscores)
+	version.GET("/highscores/:world/:category/:vocation/:page", tibiaHighscores)
+
+	// Tibia houses
+	version.GET("/house/:world/:house_id", tibiaHousesHouse)
+	version.GET("/houses/:world/:town", tibiaHousesOverview)
+
+	// Tibia killstatistics
+	version.GET("/killstatistics/:world", tibiaKillstatistics)
+
+	// Tibia news
+	version.GET("/news/archive", tibiaNewslist)       // all categories (default 90 days)
+	version.GET("/news/archive/:days", tibiaNewslist) // all categories
+	version.GET("/news/id/:news_id", tibiaNews)       // shows one news entry
+	version.GET("/news/latest", tibiaNewslist)        // only news and articles
+	version.GET("/news/newsticker", tibiaNewslist)    // only news_ticker
+
+	// Tibia spells
+	version.GET("/spell/:spell_id", tibiaSpellsSpell)
+	version.GET("/spells", tibiaSpellsOverview)
+
+	// Tibia worlds
+	version.GET("/world/:name", tibiaWorldsWorld)
+	version.GET("/worlds", tibiaWorldsOverview)
+}
+
 // BoostableBosses godoc
-// @Summary      List of boostable bosses
-// @Description  Show all boostable bosses listed
-// @Tags         boostable bosses
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  BoostableBossesOverviewResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/boostablebosses [get]
+//
+//	@Summary		List of boostable bosses
+//	@Description	Show all boostable bosses listed
+//	@Tags			boostable bosses
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	BoostableBossesOverviewResponse
+//	@Failure		502	{object}	Information
+//	@Router			/v5/boostablebosses [get]
 func tibiaBoostableBosses(c *gin.Context) {
 	tibiadataRequest := TibiaDataRequestStruct{
 		Method:  resty.MethodGet,
@@ -329,17 +333,18 @@ func tibiaBoostableBosses(c *gin.Context) {
 }
 
 // Character godoc
-// @Summary      Show one character
-// @Description  Show all information about one character available
-// @Tags         characters
-// @Accept       json
-// @Produce      json
-// @Param        name path string true "The character name" extensions(x-example=Trollefar)
-// @Success      200  {object}  CharacterResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/character/{name} [get]
+//
+//	@Summary		Show one character
+//	@Description	Show all information about one character available
+//	@Tags			characters
+//	@Accept			json
+//	@Produce		json
+//	@Param			name	path		string	true	"The character name"	extensions(x-example=Trollefar)
+//	@Success		200		{object}	CharacterResponse
+//	@Failure		400		{object}	Information
+//	@Failure		404		{object}	Information
+//	@Failure		502		{object}	Information
+//	@Router			/v5/character/{name} [get]
 func tibiaCharactersCharacter(c *gin.Context) {
 	// Getting params from URL
 	name := c.Param("name")
@@ -377,16 +382,15 @@ func tibiaCharactersCharacter(c *gin.Context) {
 }
 
 // Creatures godoc
-// @Summary      List of creatures
-// @Description  Show all creatures listed
-// @Tags         creatures
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  CreaturesOverviewResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/creatures [get]
+//
+//	@Summary		List of creatures
+//	@Description	Show all creatures listed
+//	@Tags			creatures
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	CreaturesOverviewResponse
+//	@Failure		502	{object}	Information
+//	@Router			/v5/creatures [get]
 func tibiaCreaturesOverview(c *gin.Context) {
 	tibiadataRequest := TibiaDataRequestStruct{
 		Method: resty.MethodGet,
@@ -403,17 +407,18 @@ func tibiaCreaturesOverview(c *gin.Context) {
 }
 
 // Creature godoc
-// @Summary      Show one creature
-// @Description  Show all information about one creature
-// @Tags         creatures
-// @Accept       json
-// @Produce      json
-// @Param        race path string true "The race of creature" extensions(x-example=nightmare)
-// @Success      200  {object}  CreatureResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/creature/{race} [get]
+//
+//	@Summary		Show one creature
+//	@Description	Show all information about one creature
+//	@Tags			creatures
+//	@Accept			json
+//	@Produce		json
+//	@Param			race	path		string	true	"The race of creature"	extensions(x-example=nightmare)
+//	@Success		200		{object}	CreatureResponse
+//	@Failure		400		{object}	Information
+//	@Failure		404		{object}	Information
+//	@Failure		502		{object}	Information
+//	@Router			/v5/creature/{race} [get]
 func tibiaCreaturesCreature(c *gin.Context) {
 	// getting params from URL
 	race := c.Param("race")
@@ -440,16 +445,15 @@ func tibiaCreaturesCreature(c *gin.Context) {
 }
 
 // Fansites godoc
-// @Summary      Promoted and supported fansites
-// @Description  List of all promoted and supported fansites
-// @Tags         fansites
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  FansitesResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/fansites [get]
+//
+//	@Summary		Promoted and supported fansites
+//	@Description	List of all promoted and supported fansites
+//	@Tags			fansites
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	FansitesResponse
+//	@Failure		502	{object}	Information
+//	@Router			/v5/fansites [get]
 func tibiaFansites(c *gin.Context) {
 	tibiadataRequest := TibiaDataRequestStruct{
 		Method: resty.MethodGet,
@@ -466,17 +470,18 @@ func tibiaFansites(c *gin.Context) {
 }
 
 // Guild godoc
-// @Summary      Show one guild
-// @Description  Show all information about one guild
-// @Tags         guilds
-// @Accept       json
-// @Produce      json
-// @Param        name path string true "The name of guild" extensions(x-example=Elysium)
-// @Success      200  {object}  GuildResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/guild/{name} [get]
+//
+//	@Summary		Show one guild
+//	@Description	Show all information about one guild
+//	@Tags			guilds
+//	@Accept			json
+//	@Produce		json
+//	@Param			name	path		string	true	"The name of guild"	extensions(x-example=Elysium)
+//	@Success		200		{object}	GuildResponse
+//	@Failure		400		{object}	Information
+//	@Failure		404		{object}	Information
+//	@Failure		502		{object}	Information
+//	@Router			/v5/guild/{name} [get]
 func tibiaGuildsGuild(c *gin.Context) {
 	// getting params from URL
 	guild := c.Param("name")
@@ -504,17 +509,17 @@ func tibiaGuildsGuild(c *gin.Context) {
 }
 
 // Guilds godoc
-// @Summary      List all guilds from a world
-// @Description  Show all guilds on a certain world
-// @Tags         guilds
-// @Accept       json
-// @Produce      json
-// @Param        world path string true "The world" extensions(x-example=Antica)
-// @Success      200  {object}  GuildsOverviewResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/guilds/{world} [get]
+//
+//	@Summary		List all guilds from a world
+//	@Description	Show all guilds on a certain world
+//	@Tags			guilds
+//	@Accept			json
+//	@Produce		json
+//	@Param			world	path		string	true	"The world"	extensions(x-example=Antica)
+//	@Success		200		{object}	GuildsOverviewResponse
+//	@Failure		404		{object}	Information
+//	@Failure		502		{object}	Information
+//	@Router			/v5/guilds/{world} [get]
 func tibiaGuildsOverview(c *gin.Context) {
 	// getting params from URL
 	world := c.Param("world")
@@ -550,21 +555,22 @@ func tibiaGuildsOverview(c *gin.Context) {
 }
 
 // Highscores godoc
-// @Summary      Highscores of tibia
-// @Description  Show all highscores of tibia
-// @Description  In restriction mode, the valid vocation option is all.
-// @Tags         highscores
-// @Accept       json
-// @Produce      json
-// @Param        world    path string true "The world" default(all) extensions(x-example=Antica)
-// @Param        category path string true "The category" default(experience) Enums(achievements, axefighting, charmpoints, clubfighting, distancefighting, experience, fishing, fistfighting, goshnarstaint, loyaltypoints, magiclevel, shielding, swordfighting, dromescore, bosspoints, bountypoints, weeklytasks, phosphorusrecord) extensions(x-example=fishing)
-// @Param        vocation path string true "The vocation" default(all) Enums(all, knights, paladins, sorcerers, druids, monks) extensions(x-example=all)
-// @Param        page     path int    true "The current page" default(1) minimum(1) extensions(x-example=1)
-// @Success      200  {object}  HighscoresResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/highscores/{world}/{category}/{vocation}/{page} [get]
+//
+//	@Summary		Highscores of tibia
+//	@Description	Show all highscores of tibia
+//	@Description	In restriction mode, the valid vocation option is all.
+//	@Tags			highscores
+//	@Accept			json
+//	@Produce		json
+//	@Param			world		path		string	true	"The world"			default(all)		extensions(x-example=Antica)
+//	@Param			category	path		string	true	"The category"		default(experience)	Enums(achievements, axefighting, charmpoints, clubfighting, distancefighting, experience, fishing, fistfighting, goshnarstaint, loyaltypoints, magiclevel, shielding, swordfighting, dromescore, bosspoints, bountypoints, weeklytasks, phosphorusrecord)	extensions(x-example=fishing)
+//	@Param			vocation	path		string	true	"The vocation"		default(all)		Enums(all, knights, paladins, sorcerers, druids, monks)																																																		extensions(x-example=all)
+//	@Param			page		path		int		true	"The current page"	default(1)			minimum(1)																																																													extensions(x-example=1)
+//	@Success		200			{object}	HighscoresResponse
+//	@Failure		400			{object}	Information
+//	@Failure		404			{object}	Information
+//	@Failure		502			{object}	Information
+//	@Router			/v5/highscores/{world}/{category}/{vocation}/{page} [get]
 func tibiaHighscores(c *gin.Context) {
 	// getting params from URL
 	world := c.Param("world")
@@ -644,18 +650,19 @@ func tibiaHighscores(c *gin.Context) {
 }
 
 // House godoc
-// @Summary      House view
-// @Description  Show all information about one house
-// @Tags         houses
-// @Accept       json
-// @Produce      json
-// @Param        world     path string true "The world to show" extensions(x-example=Antica)
-// @Param        house_id  path int    true "The ID of the house" extensions(x-example=35019)
-// @Success      200  {object}  HouseResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/house/{world}/{house_id} [get]
+//
+//	@Summary		House view
+//	@Description	Show all information about one house
+//	@Tags			houses
+//	@Accept			json
+//	@Produce		json
+//	@Param			world		path		string	true	"The world to show"		extensions(x-example=Antica)
+//	@Param			house_id	path		int		true	"The ID of the house"	extensions(x-example=35019)
+//	@Success		200			{object}	HouseResponse
+//	@Failure		400			{object}	Information
+//	@Failure		404			{object}	Information
+//	@Failure		502			{object}	Information
+//	@Router			/v5/house/{world}/{house_id} [get]
 func tibiaHousesHouse(c *gin.Context) {
 	// getting params from URL
 	world := c.Param("world")
@@ -710,18 +717,19 @@ func tibiaHousesHouse(c *gin.Context) {
 }
 
 // Houses godoc
-// @Summary      List of houses
-// @Description  Show all houses filtered on world and town
-// @Tags         houses
-// @Accept       json
-// @Produce      json
-// @Param        world path string true "The world to show" extensions(x-example=Antica)
-// @Param        town  path string true "The town to show" extensions(x-example=Venore)
-// @Success      200  {object}  HousesOverviewResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/houses/{world}/{town} [get]
+//
+//	@Summary		List of houses
+//	@Description	Show all houses filtered on world and town
+//	@Tags			houses
+//	@Accept			json
+//	@Produce		json
+//	@Param			world	path		string	true	"The world to show"	extensions(x-example=Antica)
+//	@Param			town	path		string	true	"The town to show"	extensions(x-example=Venore)
+//	@Success		200		{object}	HousesOverviewResponse
+//	@Failure		404		{object}	Information
+//	@Failure		502		{object}	Information
+//	@Router			/v5/houses/{world}/{town} [get]
+//
 // TODO: This API needs to be refactored somehow to use tibiaDataRequestHandler
 func tibiaHousesOverview(c *gin.Context) {
 	// getting params from URL
@@ -773,17 +781,17 @@ func tibiaHousesOverview(c *gin.Context) {
 }
 
 // Killstatistics godoc
-// @Summary      The killstatistics
-// @Description  Show all killstatistics filtered on world
-// @Tags         killstatistics
-// @Accept       json
-// @Produce      json
-// @Param        world path string true "The world to show" extensions(x-example=Antica)
-// @Success      200  {object}  KillStatisticsResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/killstatistics/{world} [get]
+//
+//	@Summary		The killstatistics
+//	@Description	Show all killstatistics filtered on world
+//	@Tags			killstatistics
+//	@Accept			json
+//	@Produce		json
+//	@Param			world	path		string	true	"The world to show"	extensions(x-example=Antica)
+//	@Success		200		{object}	KillStatisticsResponse
+//	@Failure		404		{object}	Information
+//	@Failure		502		{object}	Information
+//	@Router			/v5/killstatistics/{world} [get]
 func tibiaKillstatistics(c *gin.Context) {
 	// getting params from URL
 	world := c.Param("world")
@@ -818,65 +826,62 @@ func tibiaKillstatistics(c *gin.Context) {
 }
 
 // News archive godoc
-// @Summary      Show news archive (90 days)
-// @Description  Show news archive with a filtering on 90 days
-// @Tags         news
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  NewsListResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/news/archive [get]
+//
+//	@Summary		Show news archive (90 days)
+//	@Description	Show news archive with a filtering on 90 days
+//	@Tags			news
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	NewsListResponse
+//	@Failure		502	{object}	Information
+//	@Router			/v5/news/archive [get]
 func tibiaNewslistArchive() bool {
 	// Not used function.. but required for documentation purpose
 	return false
 }
 
 // News archive (with day filter) godoc
-// @Summary      Show news archive (with days filter)
-// @Description  Show news archive with a filtering option on days
-// @Tags         news
-// @Accept       json
-// @Produce      json
-// @Param        days path int true "The number of days to show" default(90) minimum(1) extensions(x-example=30)
-// @Success      200  {object}  NewsListResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/news/archive/{days} [get]
+//
+//	@Summary		Show news archive (with days filter)
+//	@Description	Show news archive with a filtering option on days
+//	@Tags			news
+//	@Accept			json
+//	@Produce		json
+//	@Param			days	path		int	true	"The number of days to show"	default(90)	minimum(1)	extensions(x-example=30)
+//	@Success		200		{object}	NewsListResponse
+//	@Failure		400		{object}	Information
+//	@Failure		502		{object}	Information
+//	@Router			/v5/news/archive/{days} [get]
 func tibiaNewslistArchiveDays() bool {
 	// Not used function.. but required for documentation purpose
 	return false
 }
 
 // Latest news godoc
-// @Summary      Show newslist (90 days)
-// @Description  Show newslist with filtering on articles and news of last 90 days
-// @Tags         news
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  NewsListResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/news/latest [get]
+//
+//	@Summary		Show newslist (90 days)
+//	@Description	Show newslist with filtering on articles and news of last 90 days
+//	@Tags			news
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	NewsListResponse
+//	@Failure		502	{object}	Information
+//	@Router			/v5/news/latest [get]
 func tibiaNewslistLatest() bool {
 	// Not used function.. but required for documentation purpose
 	return false
 }
 
 // News ticker godoc
-// @Summary      Show news tickers (90 days)
-// @Description  Show news of type news tickers of last 90 days
-// @Tags         news
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  NewsListResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/news/newsticker [get]
+//
+//	@Summary		Show news tickers (90 days)
+//	@Description	Show news of type news tickers of last 90 days
+//	@Tags			news
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	NewsListResponse
+//	@Failure		502	{object}	Information
+//	@Router			/v5/news/newsticker [get]
 func tibiaNewslist(c *gin.Context) {
 	// getting params from URL
 	daysStr := c.Param("days")
@@ -941,23 +946,24 @@ func tibiaNewslist(c *gin.Context) {
 		c,
 		tibiadataRequest,
 		func(BoxContentHTML string) (interface{}, error) {
-			return TibiaNewslistImpl(days, BoxContentHTML, tibiadataRequest.URL)
+			apiVersion := strings.SplitN(strings.TrimPrefix(c.Request.URL.Path, "/"), "/", 2)[0]
+			return TibiaNewslistImpl(days, BoxContentHTML, tibiadataRequest.URL, apiVersion)
 		},
 		"TibiaNewslist")
 }
 
 // News entry godoc
-// @Summary      Show one news entry
-// @Description  Show one news entry
-// @Tags         news
-// @Accept       json
-// @Produce      json
-// @Param        news_id path int true "The ID of news entry" extensions(x-example=6512)
-// @Success      200  {object}  NewsResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/news/id/{news_id} [get]
+//
+//	@Summary		Show one news entry
+//	@Description	Show one news entry
+//	@Tags			news
+//	@Accept			json
+//	@Produce		json
+//	@Param			news_id	path		int	true	"The ID of news entry"	extensions(x-example=6512)
+//	@Success		200		{object}	NewsResponse
+//	@Failure		400		{object}	Information
+//	@Failure		502		{object}	Information
+//	@Router			/v5/news/id/{news_id} [get]
 func tibiaNews(c *gin.Context) {
 	// getting params from URL
 	newsIDStr := c.Param("news_id")
@@ -992,16 +998,15 @@ func tibiaNews(c *gin.Context) {
 }
 
 // Spells godoc
-// @Summary      List all spells
-// @Description  Show all spells
-// @Tags         spells
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  SpellsOverviewResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/spells [get]
+//
+//	@Summary		List all spells
+//	@Description	Show all spells
+//	@Tags			spells
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	SpellsOverviewResponse
+//	@Failure		502	{object}	Information
+//	@Router			/v5/spells [get]
 func tibiaSpellsOverview(c *gin.Context) {
 	// getting params from URL
 	vocation := c.Param("vocation")
@@ -1040,17 +1045,18 @@ func tibiaSpellsOverview(c *gin.Context) {
 }
 
 // Spell godoc
-// @Summary      Show one spell
-// @Description  Show all information about one spell
-// @Tags         spells
-// @Accept       json
-// @Produce      json
-// @Param        spell_id path string true "The name of spell" extensions(x-example=stronghaste)
-// @Success      200  {object}  SpellInformationResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/spell/{spell_id} [get]
+//
+//	@Summary		Show one spell
+//	@Description	Show all information about one spell
+//	@Tags			spells
+//	@Accept			json
+//	@Produce		json
+//	@Param			spell_id	path		string	true	"The name of spell"	extensions(x-example=stronghaste)
+//	@Success		200			{object}	SpellInformationResponse
+//	@Failure		400			{object}	Information
+//	@Failure		404			{object}	Information
+//	@Failure		502			{object}	Information
+//	@Router			/v5/spell/{spell_id} [get]
 func tibiaSpellsSpell(c *gin.Context) {
 	// getting params from URL
 	spellRaw := c.Param("spell_id")
@@ -1076,16 +1082,15 @@ func tibiaSpellsSpell(c *gin.Context) {
 }
 
 // Worlds godoc
-// @Summary      List of all worlds
-// @Description  Show all worlds of Tibia
-// @Tags         worlds
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  WorldsOverviewResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/worlds [get]
+//
+//	@Summary		List of all worlds
+//	@Description	Show all worlds of Tibia
+//	@Tags			worlds
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	WorldsOverviewResponse
+//	@Failure		502	{object}	Information
+//	@Router			/v5/worlds [get]
 func tibiaWorldsOverview(c *gin.Context) {
 	tibiadataRequest := TibiaDataRequestStruct{
 		Method:      resty.MethodGet,
@@ -1103,17 +1108,17 @@ func tibiaWorldsOverview(c *gin.Context) {
 }
 
 // World godoc
-// @Summary      Show one world
-// @Description  Show all information about one world
-// @Tags         worlds
-// @Accept       json
-// @Produce      json
-// @Param        name path string true "The name of world" extensions(x-example=Antica)
-// @Success      200  {object}  WorldResponse
-// @Failure      400  {object}  Information
-// @Failure      404  {object}  Information
-// @Failure      503  {object}  Information
-// @Router       /v4/world/{name} [get]
+//
+//	@Summary		Show one world
+//	@Description	Show all information about one world
+//	@Tags			worlds
+//	@Accept			json
+//	@Produce		json
+//	@Param			name	path		string	true	"The name of world"	extensions(x-example=Antica)
+//	@Success		200		{object}	WorldResponse
+//	@Failure		404		{object}	Information
+//	@Failure		502		{object}	Information
+//	@Router			/v5/world/{name} [get]
 func tibiaWorldsWorld(c *gin.Context) {
 	// getting params from URL
 	world := c.Param("name")
@@ -1154,7 +1159,7 @@ func TibiaDataErrorHandler(c *gin.Context, err error, httpCode int) {
 	}
 
 	info := Information{
-		APIDetails: TibiaDataAPIDetails,
+		APIDetails: tibiaDataAPIDetailsForRequest(c),
 		Timestamp:  TibiaDataDatetime(""),
 		TibiaURLs:  []string{},
 		Status: Status{
@@ -1208,6 +1213,45 @@ func tibiaDataValidationErrorHTTPCode(err validation.Error, httpCode int) int {
 	default:
 		return http.StatusBadRequest
 	}
+}
+
+func tibiaDataAPIDetailsForRequest(c *gin.Context) APIDetails {
+	apiDetails := TibiaDataAPIDetails
+	if c != nil && c.Request != nil {
+		version := strings.SplitN(strings.TrimPrefix(c.Request.URL.Path, "/"), "/", 2)[0]
+		switch version {
+		case "v4":
+			apiDetails.Version = 4
+		case "v5":
+			apiDetails.Version = 5
+		}
+	}
+	return apiDetails
+}
+
+func tibiaDataResponseForRequest(c *gin.Context, response interface{}) interface{} {
+	apiDetails := tibiaDataAPIDetailsForRequest(c)
+	responseValue := reflect.ValueOf(response)
+	if responseValue.Kind() != reflect.Struct {
+		return response
+	}
+
+	responseCopy := reflect.New(responseValue.Type()).Elem()
+	responseCopy.Set(responseValue)
+	information := responseCopy.FieldByName("Information")
+	if !information.IsValid() || !information.CanSet() {
+		return response
+	}
+	api := information.FieldByName("APIDetails")
+	if !api.IsValid() || !api.CanSet() {
+		return response
+	}
+	version := api.FieldByName("Version")
+	if !version.IsValid() || !version.CanSet() || version.Kind() != reflect.Int {
+		return response
+	}
+	version.SetInt(int64(apiDetails.Version))
+	return responseCopy.Interface()
 }
 
 func tibiaDataValidationErrorIsNotFound(err validation.Error) bool {
@@ -1323,6 +1367,8 @@ func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 		slog.Warn("handler executed successfully but request context is nil", "handler", s)
 		return
 	}
+
+	j = tibiaDataResponseForRequest(c, j)
 
 	if slog.Default().Enabled(context.Background(), slog.LevelDebug) {
 		requestURI := ""

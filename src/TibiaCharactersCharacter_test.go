@@ -4836,7 +4836,7 @@ func BenchmarkNumber1(b *testing.B) {
 
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		characterJson, _ := TibiaCharactersCharacterImpl(string(data), "")
 
 		assert.Equal(b, "Darkside Rafa", characterJson.Character.CharacterInfo.Name)
@@ -4857,7 +4857,7 @@ func BenchmarkNumber2(b *testing.B) {
 
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		characterJson, _ := TibiaCharactersCharacterImpl(string(data), "")
 
 		assert.Equal(b, "Riley No Hands", characterJson.Character.CharacterInfo.Name)

@@ -106,9 +106,8 @@ func BenchmarkTibiaBoostableBossesOverviewImpl(b *testing.B) {
 	data := string(rawData)
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		bossSink, _ = TibiaBoostableBossesOverviewImpl(data, "https://www.tibia.com/library/?subtopic=boostablebosses")
 	}
 }

@@ -42,16 +42,16 @@ type HouseStatus struct {
 
 // Child of JSONData
 type House struct {
-	Houseid int         `json:"houseid"`        // The internal ID of the house/guildhall.
-	World   string      `json:"world"`          // The name of the world the house/guildhall belongs to.
-	Town    string      `json:"town,omitempty"` // The town where the house/guildhall is located.
-	Name    string      `json:"name"`           // The name of the house/guildhall.
-	Type    string      `json:"type,omitempty"` // The type of home. (house or guildhall)
-	Beds    int         `json:"beds"`           // The number of beds it has.
-	Size    int         `json:"size"`           // The number of SQM it has.
-	Rent    int         `json:"rent"`           // The monthly cost in gold coins for the house.
-	Img     string      `json:"img"`            // The URL to the house's minimap image.
-	Status  HouseStatus `json:"status"`         // The current status of the house/guildhall.
+	Houseid int         `json:"houseid"`                                // The internal ID of the house/guildhall.
+	World   string      `json:"world"`                                  // The name of the world the house/guildhall belongs to.
+	Town    string      `json:"town,omitempty"`                         // The town where the house/guildhall is located.
+	Name    string      `json:"name"`                                   // The name of the house/guildhall.
+	Type    string      `json:"type,omitempty" enums:"house,guildhall"` // The type of home.
+	Beds    int         `json:"beds"`                                   // The number of beds it has.
+	Size    int         `json:"size"`                                   // The number of SQM it has.
+	Rent    int         `json:"rent"`                                   // The monthly cost in gold coins for the house.
+	Img     string      `json:"img"`                                    // The URL to the house's minimap image.
+	Status  HouseStatus `json:"status"`                                 // The current status of the house/guildhall.
 }
 
 // The base includes two levels: Houses and Information

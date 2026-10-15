@@ -22,7 +22,7 @@ func TestNewsList(t *testing.T) {
 
 	TibiaDataHost = "unittest.example.com"
 
-	newsListJson, err := TibiaNewslistImpl(90, string(data), "https://www.tibia.com/news/?subtopic=newsarchive")
+	newsListJson, err := TibiaNewslistImpl(90, string(data), "https://www.tibia.com/news/?subtopic=newsarchive", "v4")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,4 +42,10 @@ func TestNewsList(t *testing.T) {
 	assert.Equal("ticker", firstArticle.Type)
 	assert.Equal("https://www.tibia.com/news/?subtopic=newsarchive&id=6529", firstArticle.TibiaURL)
 	assert.Equal("https://unittest.example.com/v4/news/id/6529", firstArticle.ApiURL)
+
+	newsListV5, err := TibiaNewslistImpl(90, string(data), "https://www.tibia.com/news/?subtopic=newsarchive", "v5")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal("https://unittest.example.com/v5/news/id/6529", newsListV5.News[0].ApiURL)
 }
