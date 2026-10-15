@@ -369,6 +369,12 @@ func TestTibiaNewsHandlers(t *testing.T) {
 	TibiaDataProxyDomain = server.URL + "/"
 	t.Cleanup(func() { TibiaDataProxyDomain = previousProxyDomain })
 
+	previousHost, previousProtocol := TibiaDataHost, TibiaDataProtocol
+	TibiaDataHost, TibiaDataProtocol = "localhost", "http"
+	t.Cleanup(func() {
+		TibiaDataHost, TibiaDataProtocol = previousHost, previousProtocol
+	})
+
 	t.Run("news list", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
@@ -382,6 +388,7 @@ func TestTibiaNewsHandlers(t *testing.T) {
 		if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &response)) {
 			assert.NotEmpty(t, response.News)
 			assert.Equal(t, 6529, response.News[0].ID)
+			assert.Equal(t, "http://localhost/v4/news/id/6529", response.News[0].ApiURL)
 		}
 	})
 
@@ -691,8 +698,7 @@ func TestCheckTibiaFansiteAPIStatus(t *testing.T) {
 func TestRegisterAPIVersionRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	registerAPIVersionRoutes(router.Group("/v4"))
-	registerAPIVersionRoutes(router.Group("/v5"))
+	registerAPIVersions(router)
 
 	var v4Routes, v5Routes []string
 	for _, route := range router.Routes() {
@@ -707,12 +713,31 @@ func TestRegisterAPIVersionRoutes(t *testing.T) {
 	assert.NotEmpty(t, v4Routes)
 	assert.ElementsMatch(t, v4Routes, v5Routes)
 
+	previousCacheControl := TibiaDataCacheControl
+	TibiaDataCacheControl = true
+	t.Cleanup(func() { TibiaDataCacheControl = previousCacheControl })
+
 	for _, version := range []string{"v4", "v5"} {
-		w := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, "/"+version+"/highscores/Antica", nil)
-		router.ServeHTTP(w, request)
-		assert.Equal(t, http.StatusMovedPermanently, w.Code)
-		assert.Equal(t, "/"+version+"/highscores/Antica/experience/all/1", w.Header().Get("Location"))
+		for _, test := range []struct {
+			path     string
+			location string
+		}{
+			{
+				path:     "/highscores/Antica",
+				location: "/highscores/Antica/experience/all/1",
+			},
+			{
+				path:     "/highscores/Antica/experience",
+				location: "/highscores/Antica/experience/all/1",
+			},
+		} {
+			w := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, "/"+version+test.path, nil)
+			router.ServeHTTP(w, request)
+			assert.Equal(t, http.StatusMovedPermanently, w.Code)
+			assert.Equal(t, "/"+version+test.location, w.Header().Get("Location"))
+			assert.Equal(t, "public, max-age=900, s-maxage=900", w.Header().Get(cacheControlHeader))
+		}
 	}
 }
 
@@ -842,6 +867,49 @@ func TestAPIResponseUsesRequestedVersion(t *testing.T) {
 			if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &response)) {
 				assert.Equal(t, test.expectedVersion, response.Information.APIDetails.Version)
 			}
+		})
+	}
+}
+
+func TestTibiaDataResponseForRequestLeavesUnexpectedShapesUnchanged(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodGet, "/v5/character/Trollefar", nil)
+
+	type noInformation struct {
+		Value string
+	}
+	type noAPIDetails struct {
+		Information struct{}
+	}
+	type nonIntegerVersion struct {
+		Information struct {
+			APIDetails struct {
+				Version string
+			}
+		}
+	}
+
+	tests := []struct {
+		name     string
+		response interface{}
+	}{
+		{name: "non-struct response", response: "value"},
+		{name: "missing information field", response: noInformation{Value: "value"}},
+		{name: "missing api details field", response: noAPIDetails{Information: struct{}{}}},
+		{
+			name: "non-integer version field",
+			response: nonIntegerVersion{Information: struct {
+				APIDetails struct {
+					Version string
+				}
+			}{APIDetails: struct{ Version string }{Version: "4"}}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.response, tibiaDataResponseForRequest(c, test.response))
 		})
 	}
 }
