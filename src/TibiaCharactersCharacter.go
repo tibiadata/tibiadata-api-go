@@ -378,6 +378,21 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 				AccountStatus:     "Free Account",
 			}
 
+			if fansiteData.CharacterGameInformation.IsPromoted {
+				switch characterInfo.Vocation {
+				case "Druid":
+					characterInfo.Vocation = "Elder Druid"
+				case "Knight":
+					characterInfo.Vocation = "Elite Knight"
+				case "Paladin":
+					characterInfo.Vocation = "Royal Paladin"
+				case "Sorcerer":
+					characterInfo.Vocation = "Master Sorcerer"
+				case "Monk":
+					characterInfo.Vocation = "Exalted Monk"
+				}
+			}
+
 			if fansiteData.CharacterGameInformation.IsPremium {
 				characterInfo.AccountStatus = "Premium Account"
 			}

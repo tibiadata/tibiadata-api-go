@@ -125,6 +125,59 @@ func TestFansiteCharacterInvalidJSON(t *testing.T) {
 	assert.ErrorIs(t, err, validation.ErrorCharacterNotFound)
 }
 
+func TestFansiteCharacterVocationPromotion(t *testing.T) {
+	testCases := []struct {
+		vocation string
+		base     string
+		promoted string
+	}{
+		{vocation: "druid", base: "Druid", promoted: "Elder Druid"},
+		{vocation: "knight", base: "Knight", promoted: "Elite Knight"},
+		{vocation: "paladin", base: "Paladin", promoted: "Royal Paladin"},
+		{vocation: "sorcerer", base: "Sorcerer", promoted: "Master Sorcerer"},
+		{vocation: "monk", base: "Monk", promoted: "Exalted Monk"},
+		{vocation: "none", base: "None", promoted: "None"},
+		{vocation: "unknown", base: "Unknown", promoted: "Unknown"},
+	}
+
+	for _, tc := range testCases {
+		for _, isPromoted := range []bool{false, true} {
+			for _, isPremium := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/promoted=%t/premium=%t", tc.vocation, isPromoted, isPremium), func(t *testing.T) {
+					input, err := json.Marshal(fansiteAPICharacterResponse{
+						CharacterGameInformation: fansiteAPICharacterGameInformation{
+							CharacterName: "Test Character",
+							Vocation:      tc.vocation,
+							IsPromoted:    isPromoted,
+							IsPremium:     isPremium,
+						},
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					response, err := TibiaCharactersCharacterImpl(string(input), "https://fansiteapi.example/character")
+					if err != nil {
+						t.Fatal(err)
+					}
+
+					expectedVocation := tc.base
+					if isPromoted {
+						expectedVocation = tc.promoted
+					}
+					assert.Equal(t, expectedVocation, response.Character.CharacterInfo.Vocation)
+
+					expectedAccountStatus := "Free Account"
+					if isPremium {
+						expectedAccountStatus = "Premium Account"
+					}
+					assert.Equal(t, expectedAccountStatus, response.Character.CharacterInfo.AccountStatus)
+				})
+			}
+		}
+	}
+}
+
 func TestFansiteCharacterEmptyName(t *testing.T) {
 	_, err := TibiaCharactersCharacterImpl(`{"characterGameInformation":{"characterName":""}}`, "")
 	assert.ErrorIs(t, err, validation.ErrorCharacterNotFound)
@@ -287,13 +340,7 @@ func TestCharacterMightyTroll(t *testing.T) {
 			assert.Equal("Dragondouser", character.Title)
 			assert.Equal(9, character.UnlockedTitles)
 
-			// Vocation via html remains on premium vocation, even if account status was changed
-			switch tc.name {
-			case "html":
-				assert.Equal("Elder Druid", character.Vocation)
-			case "json":
-				assert.Equal("Druid", character.Vocation)
-			}
+			assert.Equal("Elder Druid", character.Vocation)
 
 			assert.Equal(200, character.Level)
 			assert.Equal(306, character.AchievementPoints)
