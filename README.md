@@ -201,7 +201,6 @@ On startup, when a valid token is configured, the API performs a best-effort che
 
 The data returned by the HTML and JSON collector can differ, which may lead to discrepancies in the information provided by the two sources. Such findings are:
 
-- Characters vocation on the HTML page may still show premium-vocation, even though the account status is free.
 - Account achievements on the HTML page do not reflect the actual achievements grade as correctly shown by the JSON collector.
 
 ## General information
