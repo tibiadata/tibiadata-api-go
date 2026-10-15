@@ -65,7 +65,7 @@ func BenchmarkAntica(b *testing.B) {
 
 	assert := assert.New(b)
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		anticaJson, err := TibiaKillstatisticsImpl("Antica", string(data), "")
 		if err != nil {
 			b.Fatal(err)

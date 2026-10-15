@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -687,6 +688,34 @@ func TestCheckTibiaFansiteAPIStatus(t *testing.T) {
 	})
 }
 
+func TestRegisterAPIVersionRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	registerAPIVersionRoutes(router.Group("/v4"))
+	registerAPIVersionRoutes(router.Group("/v5"))
+
+	var v4Routes, v5Routes []string
+	for _, route := range router.Routes() {
+		switch {
+		case strings.HasPrefix(route.Path, "/v4/"):
+			v4Routes = append(v4Routes, route.Method+" "+strings.TrimPrefix(route.Path, "/v4"))
+		case strings.HasPrefix(route.Path, "/v5/"):
+			v5Routes = append(v5Routes, route.Method+" "+strings.TrimPrefix(route.Path, "/v5"))
+		}
+	}
+
+	assert.NotEmpty(t, v4Routes)
+	assert.ElementsMatch(t, v4Routes, v5Routes)
+
+	for _, version := range []string{"v4", "v5"} {
+		w := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/"+version+"/highscores/Antica", nil)
+		router.ServeHTTP(w, request)
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "/"+version+"/highscores/Antica/experience/all/1", w.Header().Get("Location"))
+	}
+}
+
 func TestTibiaCharactersCharacterUsesHTMLURLWhenFansiteDisabled(t *testing.T) {
 	assert := assert.New(t)
 	prev := TibiaFansiteAPI
@@ -776,4 +805,43 @@ func TestTibiaDataAPIHandleResponseBranches(t *testing.T) {
 		TibiaDataAPIHandleResponse(c, "test", payload{T: "abc"})
 		assert.Equal(http.StatusOK, w.Code)
 	})
+}
+
+func TestAPIResponseUsesRequestedVersion(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	previousAPIDetails := TibiaDataAPIDetails
+	TibiaDataAPIDetails.Version = 4
+	t.Cleanup(func() { TibiaDataAPIDetails = previousAPIDetails })
+
+	for _, test := range []struct {
+		path            string
+		expectedVersion int
+	}{
+		{path: "/v4/character/Trollefar", expectedVersion: 4},
+		{path: "/v5/character/Trollefar", expectedVersion: 5},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodGet, test.path, nil)
+
+			TibiaDataAPIHandleResponse(c, "test", OutInformation{
+				Information: Information{APIDetails: TibiaDataAPIDetails},
+			})
+
+			var response OutInformation
+			if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &response)) {
+				assert.Equal(t, test.expectedVersion, response.Information.APIDetails.Version)
+			}
+
+			w = httptest.NewRecorder()
+			c, _ = gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodGet, test.path, nil)
+			TibiaDataErrorHandler(c, validation.ErrorCharacterNameInvalid, http.StatusBadRequest)
+
+			if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &response)) {
+				assert.Equal(t, test.expectedVersion, response.Information.APIDetails.Version)
+			}
+		})
+	}
 }

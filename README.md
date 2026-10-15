@@ -32,6 +32,7 @@ Documentation of API endpoints can be found on [docs.tibiadata.com](https://docs
 
 Here is a summary of the TibiaData API versions
 
+> **v5** endpoints are available alongside v4 in preparation for the next release\
 > **v4** is released _(since 1st December 2024 )_\
 > **v3** is deprecated _(since 31rd January 2024)_\
 > **v2** is deprecated _(since 30rd April 2022)_\
@@ -179,6 +180,26 @@ Those are the current existing endpoints.
 - GET `/v4/spells`
 - GET `/v4/world/:name`
 - GET `/v4/worlds`
+- GET `/v5/boostablebosses`
+- GET `/v5/character/:name`
+- GET `/v5/creature/:race`
+- GET `/v5/creatures`
+- GET `/v5/fansites`
+- GET `/v5/guild/:name`
+- GET `/v5/guilds/:world`
+- GET `/v5/highscores/:world/:category/:vocation/:page`
+- GET `/v5/house/:world/:house_id`
+- GET `/v5/houses/:world/:town`
+- GET `/v5/killstatistics/:world`
+- GET `/v5/news/archive`
+- GET `/v5/news/archive/:days`
+- GET `/v5/news/id/:news_id`
+- GET `/v5/news/latest`
+- GET `/v5/news/newsticker`
+- GET `/v5/spell/:spell_id`
+- GET `/v5/spells`
+- GET `/v5/world/:name`
+- GET `/v5/worlds`
 - GET `/versions`
 
 ### Deprecated Endpoints
@@ -191,7 +212,7 @@ In addition to the deprecated API versions like v1, v2 and v3, there are also so
 
 There are some endpoints that can be deviant between the container documentation and the hosted version. This is due to restricted mode that restrict certain API actions due to high load on the tibia.com servers.
 
-- `/v4/highscores`-filtering on vocation is removed, only the `all` category is valid.
+- `/v4/highscores` and `/v5/highscores`-filtering on vocation is removed, only the `all` category is valid.
 
 ### Fansite API
 
