@@ -139,11 +139,11 @@ func fansiteUnixToDate(ts int64) string {
 //
 // The verb is chosen based on the number of player killers (assists don't
 // count), following Tibia's convention: Died (0), Killed (1-4), Slain (5-9),
-// Crushed (10-14), Eliminated (15-19), Annihilated (20+). Tibia additionally
-// randomizes verb synonyms and omits the a/an article for certain unique
-// monsters; neither is derivable from the fansite API data, so this is a
-// best-effort, deterministic reconstruction rather than a byte-for-byte
-// match of the scraped HTML text.
+// Crushed (10-14), Eliminated (15-19), Annihilated (20+). Tibia may
+// additionally randomize verb synonyms, which is not derivable from the
+// fansite API data. Killer names must be passed as returned by the fansite
+// API (including any "a "/"an " article), since that is how tibia.com
+// displays them.
 func fansiteDeathReason(level int, killers []Killers, assists []Killers) string {
 	playerKillers := 0
 	for _, k := range killers {
@@ -201,19 +201,14 @@ func fansiteJoinKillerNames(list []Killers) string {
 }
 
 // fansiteFormatKillerName formats a single killer/assist display name,
-// prefixing a plain creature (non-player, non-summon) name with "a"/"an" and
-// appending "(traded)" when applicable. Summoned creatures ("<creature> of
-// <owner>") are left without an article, matching how tibia.com displays
-// them in the vast majority of cases.
+// appending "(traded)" when applicable. Creature names are used exactly as
+// returned by the fansite API (e.g. "a trap", "creepy crawler"), which
+// matches how tibia.com displays them. Summoned creatures are rendered as
+// "<creature> of <owner>".
 func fansiteFormatKillerName(k Killers) string {
-	var name string
-	switch {
-	case k.Summon != "":
+	name := k.Name
+	if k.Summon != "" {
 		name = fmt.Sprintf("%s of %s", k.Summon, k.Name)
-	case !k.Player:
-		name = fansiteWithArticle(k.Name)
-	default:
-		name = k.Name
 	}
 
 	if k.Traded {
@@ -223,25 +218,21 @@ func fansiteFormatKillerName(k Killers) string {
 	return name
 }
 
-// fansiteWithArticle prefixes a common creature name with "a" or "an" based
-// on a simple vowel heuristic. Proper names, including named bosses such as
-// Anmothra, are used without an article.
-func fansiteWithArticle(name string) string {
-	if name == "" {
-		return name
-	}
+// fansiteTrimArticle removes a leading "a "/"an " article from a creature
+// name, mirroring the normalization done by the HTML parsing path.
+func fansiteTrimArticle(name string) string {
+	return strings.TrimPrefix(strings.TrimPrefix(name, "a "), "an ")
+}
 
-	r, _ := utf8.DecodeRuneInString(name)
-	if unicode.IsUpper(r) {
-		return name
+// fansiteNormalizeKillerNames trims articles from non-player killer/assist
+// names and summon names, so that the stored names match the HTML path.
+func fansiteNormalizeKillerNames(list []Killers) {
+	for i := range list {
+		if !list[i].Player {
+			list[i].Name = fansiteTrimArticle(list[i].Name)
+		}
+		list[i].Summon = fansiteTrimArticle(list[i].Summon)
 	}
-
-	article := "a"
-	if strings.ContainsRune("aeiouAEIOU", r) {
-		article = "an"
-	}
-
-	return article + " " + name
 }
 
 func tibiaDataLooksLikeJSON(content string) bool {
@@ -448,6 +439,8 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 						}
 					}
 					death.Reason = fansiteDeathReason(death.Level, death.Killers, death.Assists)
+					fansiteNormalizeKillerNames(death.Killers)
+					fansiteNormalizeKillerNames(death.Assists)
 					deaths = append(deaths, death)
 				}
 			}
