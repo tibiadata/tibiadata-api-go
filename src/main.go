@@ -81,9 +81,6 @@ func init() {
 
 	if TibiaDataDebug {
 		slog.Debug("TibiaData API User-Agent", "user_agent", TibiaDataUserAgent)
-		for version, userAgent := range tibiaDataUserAgents {
-			slog.Debug("TibiaData API User-Agent for version", "version", version, "user_agent", userAgent)
-		}
 	}
 
 	initTibiaDataClient()

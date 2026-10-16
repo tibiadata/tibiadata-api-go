@@ -48,6 +48,7 @@ const (
 	cacheMaxAgeNews       = 900 * time.Second
 	cacheMaxAgeWorlds     = 60 * time.Second
 	cacheControlHeader    = "Cache-Control"
+	userAgentHeader       = "User-Agent"
 )
 
 // initTibiaDataClient creates the shared resty client with static configuration.
@@ -67,8 +68,8 @@ func initTibiaDataClient() {
 
 	// Set headers for all requests
 	tibiaDataClient.SetHeaders(map[string]string{
-		"Content-Type": "application/json",
-		"User-Agent":   TibiaDataUserAgent,
+		"Content-Type":  "application/json",
+		userAgentHeader: TibiaDataUserAgent,
 	})
 
 	// Enabling Content length value for all request
@@ -1325,7 +1326,7 @@ func TibiaDataJSONDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 	req := tibiaDataClient.R().
 		SetHeader("Authorization", "Bearer "+TibiaFansiteToken)
 	if TibiaDataRequest.UserAgent != "" {
-		req.SetHeader("User-Agent", TibiaDataRequest.UserAgent)
+		req.SetHeader(userAgentHeader, TibiaDataRequest.UserAgent)
 	}
 	res, err := req.Get(TibiaDataRequest.URL)
 	if err != nil {
@@ -1444,6 +1445,9 @@ func tibiaDataInitUserAgents() {
 	tibiaDataUserAgents = make(map[int]string, len(tibiaDataSupportedAPIVersions))
 	for _, version := range tibiaDataSupportedAPIVersions {
 		tibiaDataUserAgents[version] = TibiaDataUserAgentGenerator(version)
+		if TibiaDataDebug {
+			slog.Debug("TibiaData API User-Agent for version", "version", version, "user_agent", tibiaDataUserAgents[version])
+		}
 	}
 }
 
@@ -1486,7 +1490,7 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 
 	req := tibiaDataClient.R()
 	if TibiaDataRequest.UserAgent != "" {
-		req.SetHeader("User-Agent", TibiaDataRequest.UserAgent)
+		req.SetHeader(userAgentHeader, TibiaDataRequest.UserAgent)
 	}
 
 	switch TibiaDataRequest.Method {
