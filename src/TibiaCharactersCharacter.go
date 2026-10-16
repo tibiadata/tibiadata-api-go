@@ -789,7 +789,8 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					) + nameIdx
 
 					AchievementsData = append(AchievementsData, Achievements{
-						Name:   TibiaDataSanitizeStrings(CharacterListHTML[nameIdx:endNameIdx]),
+						// tibia.com double-escapes achievement names (e.g. &amp;#39;), so unescape twice
+						Name:   TibiaDataSanitizeEscapedString(TibiaDataSanitizeStrings(CharacterListHTML[nameIdx:endNameIdx])),
 						Grade:  strings.Count(CharacterListHTML, "achievement-grade-symbol"),
 						Secret: strings.Contains(CharacterListHTML, "achievement-secret-symbol"),
 					})
