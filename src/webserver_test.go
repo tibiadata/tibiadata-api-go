@@ -913,3 +913,57 @@ func TestTibiaDataResponseForRequestLeavesUnexpectedShapesUnchanged(t *testing.T
 		})
 	}
 }
+
+func TestTibiaDataUserAgentForRequest(t *testing.T) {
+	origHost, origUA, origUAs := TibiaDataHost, TibiaDataUserAgent, tibiaDataUserAgents
+	t.Cleanup(func() {
+		TibiaDataHost, TibiaDataUserAgent, tibiaDataUserAgents = origHost, origUA, origUAs
+	})
+
+	TibiaDataHost = ""
+	TibiaDataUserAgent = TibiaDataUserAgentGenerator(TibiaDataAPIversion)
+	tibiaDataInitUserAgents()
+
+	const details = " (release/unknown; build/manual; commit/-; edition/open-source)"
+	tests := []struct {
+		path     string
+		expected string
+	}{
+		{"/v4/worlds", "TibiaData-API/v4" + details},
+		{"/v5/worlds", "TibiaData-API/v5" + details},
+		{"/healthz", TibiaDataUserAgent},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodGet, tt.path, nil)
+			assert.Equal(t, tt.expected, tibiaDataUserAgentForRequest(c))
+		})
+	}
+
+	assert.Equal(t, TibiaDataUserAgent, tibiaDataUserAgentForRequest(nil))
+}
+
+func TestTibiaDataHTMLDataCollectorUserAgent(t *testing.T) {
+	origUA, origClient := TibiaDataUserAgent, tibiaDataClient
+	t.Cleanup(func() {
+		TibiaDataUserAgent, tibiaDataClient = origUA, origClient
+	})
+
+	var received []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received = append(received, r.UserAgent())
+		_, _ = w.Write([]byte("<html><body></body></html>"))
+	}))
+	defer server.Close()
+
+	TibiaDataUserAgent = "TibiaData-API/default"
+	initTibiaDataClient()
+
+	_, err := TibiaDataHTMLDataCollector(TibiaDataRequestStruct{URL: server.URL, RawBody: true, UserAgent: "TibiaData-API/v5 (test)"})
+	assert.NoError(t, err)
+	_, err = TibiaDataHTMLDataCollector(TibiaDataRequestStruct{URL: server.URL, RawBody: true})
+	assert.NoError(t, err)
+
+	assert.Equal(t, []string{"TibiaData-API/v5 (test)", "TibiaData-API/default"}, received)
+}

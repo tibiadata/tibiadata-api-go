@@ -59,7 +59,7 @@ func TibiaHousesOverviewImpl(c *gin.Context, world string, town string, htmlData
 
 	// running over the FansiteTypes array
 	for _, HouseType := range HouseTypes {
-		houses, houseUrl, err := makeHouseRequest(HouseType, world, town, htmlDataCollector)
+		houses, houseUrl, err := makeHouseRequest(HouseType, world, town, tibiaDataUserAgentForRequest(c), htmlDataCollector)
 		if err != nil {
 			return HousesOverviewResponse{}, fmt.Errorf("[error] TibiaHousesOverviewImpl failed at makeHouseRequest, type: %s, err: %s", HouseType, err)
 		}
@@ -93,13 +93,14 @@ func TibiaHousesOverviewImpl(c *gin.Context, world string, town string, htmlData
 	}, nil
 }
 
-func makeHouseRequest(HouseType, world, town string, htmlDataCollector func(TibiaDataRequestStruct) (string, error)) ([]HousesHouse, string, error) {
+func makeHouseRequest(HouseType, world, town, userAgent string, htmlDataCollector func(TibiaDataRequestStruct) (string, error)) ([]HousesHouse, string, error) {
 	// Creating an empty var
 	var output []HousesHouse
 
 	tibiadataRequest := TibiaDataRequestStruct{
-		Method: resty.MethodGet,
-		URL:    "https://www.tibia.com/community/?subtopic=houses&world=" + TibiaDataQueryEscapeString(world) + "&town=" + TibiaDataQueryEscapeString(town) + "&type=" + TibiaDataQueryEscapeString(HouseType),
+		Method:    resty.MethodGet,
+		URL:       "https://www.tibia.com/community/?subtopic=houses&world=" + TibiaDataQueryEscapeString(world) + "&town=" + TibiaDataQueryEscapeString(town) + "&type=" + TibiaDataQueryEscapeString(HouseType),
+		UserAgent: userAgent,
 	}
 
 	BoxContentHTML, err := htmlDataCollector(tibiadataRequest)
