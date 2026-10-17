@@ -5036,3 +5036,47 @@ func TestInvalidName(t *testing.T) {
 	assert.EqualValues(validation.ErrorCharacterNameInvalid.Code(), jerr.Information.Status.Error)
 	assert.EqualValues(validation.ErrorCharacterNameInvalid.Error(), jerr.Information.Status.Message)
 }
+
+func TestAchievementNameEncodingParityHTMLAndFansite(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/characters/Luminals.html")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("File reading error: %s", err)
+	}
+
+	// tibia.com double-escapes apostrophes in achievement names
+	htmlInput := strings.Replace(string(data), "</td><td>Alumni", "</td><td>The Cake&amp;#39;s the Truth", 1)
+
+	htmlResp, err := TibiaCharactersCharacterImpl(htmlInput, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fansiteInput := `{
+		"characterGameInformation": {"characterName": "Luminals", "vocation": "knight"},
+		"characterAdminInformation": {
+			"displayedAchievements": [
+				{"name":"The Cake's the Truth","achievementPoints":2,"isSecret":false},
+				{"name":"Forbidden Fruit","achievementPoints":1,"isSecret":true},
+				{"name":"Goldhunter","achievementPoints":1,"isSecret":true},
+				{"name":"Pyromaniac","achievementPoints":2,"isSecret":true},
+				{"name":"Razing!","achievementPoints":3,"isSecret":true}
+			]
+		}
+	}`
+
+	fansiteResp, err := TibiaCharactersCharacterImpl(fansiteInput, "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Luminals")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	assert.Equal("The Cake's the Truth", htmlResp.Character.Achievements[0].Name)
+	assert.Equal("The Cake's the Truth", fansiteResp.Character.Achievements[4].Name)
+	assert.ElementsMatch(htmlResp.Character.Achievements, fansiteResp.Character.Achievements)
+}
