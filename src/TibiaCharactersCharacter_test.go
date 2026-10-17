@@ -603,13 +603,19 @@ func TestFansiteDeathReason(t *testing.T) {
 			name:     "creature kill, no assists",
 			level:    264,
 			killers:  []Killers{{Name: "gazer spectre"}},
-			expected: "Died at Level 264 by a gazer spectre.",
+			expected: "Died at Level 264 by gazer spectre.",
 		},
 		{
-			name:     "creature kill starting with vowel",
-			level:    266,
-			killers:  []Killers{{Name: "ice golem"}},
-			expected: "Died at Level 266 by an ice golem.",
+			name:     "creature name with article from fansite api",
+			level:    1172,
+			killers:  []Killers{{Name: "a trap"}},
+			expected: "Died at Level 1172 by a trap.",
+		},
+		{
+			name:     "player and creature killers",
+			level:    1171,
+			killers:  []Killers{{Name: "Tad Dzik", Player: true}, {Name: "creepy crawler"}},
+			expected: "Killed at Level 1171 by Tad Dzik and creepy crawler.",
 		},
 		{
 			name:     "named boss without article",
@@ -678,21 +684,55 @@ func TestFansiteDeathReason(t *testing.T) {
 	}
 }
 
-// TestFansiteWithArticleEmptyName verifies the defensive guard in
-// fansiteWithArticle: an empty name is returned as-is, without a leading
-// "a "/"an " article being added.
-func TestFansiteWithArticleEmptyName(t *testing.T) {
-	assert.Equal(t, "", fansiteWithArticle(""))
+// TestFansiteTrimArticle verifies that leading "a "/"an " articles are
+// removed from creature names, mirroring the HTML parsing path.
+func TestFansiteTrimArticle(t *testing.T) {
+	assert.Equal(t, "", fansiteTrimArticle(""))
+	assert.Equal(t, "trap", fansiteTrimArticle("a trap"))
+	assert.Equal(t, "ice golem", fansiteTrimArticle("an ice golem"))
+	assert.Equal(t, "creepy crawler", fansiteTrimArticle("creepy crawler"))
+	assert.Equal(t, "Anmothra", fansiteTrimArticle("Anmothra"))
+}
+
+// TestFansiteKillerArticle verifies that a fansite API killer name that
+// already contains an article ("a trap") is used as-is in the reason, while
+// the stored killer name is normalized to match the HTML path ("trap").
+func TestFansiteKillerArticle(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/characters/Kaskaader Mike.json")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("file reading error: %s", err)
+	}
+
+	response, err := TibiaCharactersCharacterImpl(string(data), "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Kaskaader%20Mike")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sawTrap := false
+	for _, d := range response.Character.Deaths {
+		assert.NotContains(t, d.Reason, "an a ")
+		assert.NotContains(t, d.Reason, "a a ")
+		for _, k := range append(append([]Killers{}, d.Killers...), d.Assists...) {
+			assert.NotEqual(t, "a trap", k.Name)
+			if k.Name == "trap" {
+				sawTrap = true
+				assert.Contains(t, d.Reason, " a trap")
+			}
+		}
+	}
+	assert.True(t, sawTrap, "expected fixture to contain a death by a trap")
 }
 
 // TestCharacterLeataClanReasonMatchesHTML compares the computed JSON death
 // reasons against the literal reasons scraped from tibia.com's HTML for the
 // same character, including deaths where the killer has a "remark" (summon),
 // to verify the two parsing paths produce equivalent output.
-//
-// Common creature names sometimes appear with or without an article in the
-// HTML text, which cannot be reconstructed from the fansite API. Named
-// monsters such as Anmothra, however, are consistently rendered without one.
 func TestCharacterLeataClanReasonMatchesHTML(t *testing.T) {
 	readDeaths := func(fixture, url string) []Deaths {
 		file, err := static.TestFiles.Open(fixture)
