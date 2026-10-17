@@ -18,6 +18,7 @@ updates:
     directories:
       - /
       - /src/*
+      - /tools
     schedule:
       interval: daily
     commit-message:
