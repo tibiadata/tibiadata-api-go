@@ -202,6 +202,10 @@ Those are the current existing endpoints.
 - GET `/v5/worlds`
 - GET `/versions`
 
+### Highscore categories
+
+On `/v5/highscores`, category aliases and case variants (for example `magic`, `mlvl` or `MagicLevel`) are answered with a `301` redirect to the canonical lowercase category name (for example `magiclevel`), so each category is served from a single cacheable URL. `/v4/highscores` keeps serving aliases directly. Unknown categories return a JSON error (`11004`).
+
 ### Deprecated Endpoints
 
 In addition to the deprecated API versions like v1, v2 and v3, there are also some endpoints that are deprecated. As of now, those are:
