@@ -126,7 +126,7 @@ func fansitePosition(value string) string {
 	case "cipsoftmember":
 		return cipSoftMemberPosition
 	case "customersupport":
-		return "Customer Support"
+		return customerSupportPosition
 	}
 	return ""
 }
@@ -363,7 +363,10 @@ type CharacterResponse struct {
 // best to just simply use the Br constant value.
 const Br = 0x202
 
-const cipSoftMemberPosition = "CipSoft Member"
+const (
+	cipSoftMemberPosition   = "CipSoft Member"
+	customerSupportPosition = "Customer Support"
+)
 
 // TibiaCharactersCharacter func
 func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterResponse, error) {
