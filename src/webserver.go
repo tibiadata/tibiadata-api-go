@@ -30,6 +30,9 @@ var (
 	// TibiaData app resty vars
 	TibiaDataUserAgent, TibiaDataProxyDomain string
 
+	// tibiaDataUserAgents holds a User-Agent per supported API version
+	tibiaDataUserAgents = map[int]string{}
+
 	// tibiaDataClient is a shared resty client reused across all requests
 	tibiaDataClient *resty.Client
 
@@ -45,6 +48,7 @@ const (
 	cacheMaxAgeNews       = 900 * time.Second
 	cacheMaxAgeWorlds     = 60 * time.Second
 	cacheControlHeader    = "Cache-Control"
+	userAgentHeader       = "User-Agent"
 )
 
 // initTibiaDataClient creates the shared resty client with static configuration.
@@ -64,8 +68,8 @@ func initTibiaDataClient() {
 
 	// Set headers for all requests
 	tibiaDataClient.SetHeaders(map[string]string{
-		"Content-Type": "application/json",
-		"User-Agent":   TibiaDataUserAgent,
+		"Content-Type":  "application/json",
+		userAgentHeader: TibiaDataUserAgent,
 	})
 
 	// Enabling Content length value for all request
@@ -116,6 +120,7 @@ type TibiaDataRequestStruct struct {
 	RawBody       bool              `json:"raw_body"`        // If set to true the whole content from tibia.com will be passed down
 	UseFansiteAPI bool              `json:"use_fansite_api"` // If true, fetch data from Fansite API JSON endpoint
 	CacheMaxAge   time.Duration     `json:"-"`
+	UserAgent     string            `json:"-"` // User-Agent for the request (falls back to client default when empty)
 }
 
 // RunWebServer starts the gin server
@@ -1229,6 +1234,14 @@ func tibiaDataAPIDetailsForRequest(c *gin.Context) APIDetails {
 	return apiDetails
 }
 
+// tibiaDataUserAgentForRequest returns the User-Agent matching the API version of the request path.
+func tibiaDataUserAgentForRequest(c *gin.Context) string {
+	if ua, ok := tibiaDataUserAgents[tibiaDataAPIDetailsForRequest(c).Version]; ok {
+		return ua
+	}
+	return TibiaDataUserAgent
+}
+
 func tibiaDataResponseForRequest(c *gin.Context, response interface{}) interface{} {
 	apiDetails := tibiaDataAPIDetailsForRequest(c)
 	responseValue := reflect.ValueOf(response)
@@ -1276,6 +1289,9 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 		boxContent string
 		err        error
 	)
+	if tibiaDataRequest.UserAgent == "" {
+		tibiaDataRequest.UserAgent = tibiaDataUserAgentForRequest(c)
+	}
 	if tibiaDataRequest.UseFansiteAPI {
 		boxContent, err = TibiaDataJSONDataCollector(tibiaDataRequest)
 	} else {
@@ -1307,9 +1323,12 @@ func TibiaDataJSONDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 		return "", errors.New("missing TibiaFansiteToken for fansiteapi.tibia.com request")
 	}
 
-	res, err := tibiaDataClient.R().
-		SetHeader("Authorization", "Bearer "+TibiaFansiteToken).
-		Get(TibiaDataRequest.URL)
+	req := tibiaDataClient.R().
+		SetHeader("Authorization", "Bearer "+TibiaFansiteToken)
+	if TibiaDataRequest.UserAgent != "" {
+		req.SetHeader(userAgentHeader, TibiaDataRequest.UserAgent)
+	}
+	res, err := req.Get(TibiaDataRequest.URL)
 	if err != nil {
 		return "", err
 	}
@@ -1418,6 +1437,20 @@ func tibiaDataCacheControlValue(maxAge time.Duration) string {
 	return fmt.Sprintf("public, max-age=%d, s-maxage=%d", seconds, seconds)
 }
 
+// tibiaDataSupportedAPIVersions lists the API versions served by the webserver
+var tibiaDataSupportedAPIVersions = []int{4, 5}
+
+// tibiaDataInitUserAgents generates the User-Agent for every supported API version
+func tibiaDataInitUserAgents() {
+	tibiaDataUserAgents = make(map[int]string, len(tibiaDataSupportedAPIVersions))
+	for _, version := range tibiaDataSupportedAPIVersions {
+		tibiaDataUserAgents[version] = TibiaDataUserAgentGenerator(version)
+		if TibiaDataDebug {
+			slog.Debug("TibiaData API User-Agent for version", "version", version, "user_agent", tibiaDataUserAgents[version])
+		}
+	}
+}
+
 // TibiadataUserAgentGenerator func - creates User-Agent for requests
 func TibiaDataUserAgentGenerator(version int) string {
 	// setting product name
@@ -1455,13 +1488,18 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 		LogMessage string
 	)
 
+	req := tibiaDataClient.R()
+	if TibiaDataRequest.UserAgent != "" {
+		req.SetHeader(userAgentHeader, TibiaDataRequest.UserAgent)
+	}
+
 	switch TibiaDataRequest.Method {
 	case resty.MethodPost:
-		res, err = tibiaDataClient.R().
+		res, err = req.
 			SetFormData(TibiaDataRequest.FormData).
 			Post(TibiaDataRequest.URL)
 	default:
-		res, err = tibiaDataClient.R().Get(TibiaDataRequest.URL)
+		res, err = req.Get(TibiaDataRequest.URL)
 	}
 
 	if TibiaDataDebug {

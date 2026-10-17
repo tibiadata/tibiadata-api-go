@@ -913,3 +913,149 @@ func TestTibiaDataResponseForRequestLeavesUnexpectedShapesUnchanged(t *testing.T
 		})
 	}
 }
+
+func TestTibiaDataUserAgentForRequest(t *testing.T) {
+	origHost, origUA, origUAs := TibiaDataHost, TibiaDataUserAgent, tibiaDataUserAgents
+	t.Cleanup(func() {
+		TibiaDataHost, TibiaDataUserAgent, tibiaDataUserAgents = origHost, origUA, origUAs
+	})
+
+	TibiaDataHost = ""
+	TibiaDataUserAgent = TibiaDataUserAgentGenerator(TibiaDataAPIversion)
+	tibiaDataInitUserAgents()
+
+	const details = " (release/unknown; build/manual; commit/-; edition/open-source)"
+	tests := []struct {
+		path     string
+		expected string
+	}{
+		{"/v4/worlds", "TibiaData-API/v4" + details},
+		{"/v5/worlds", "TibiaData-API/v5" + details},
+		{"/healthz", TibiaDataUserAgent},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodGet, tt.path, nil)
+			assert.Equal(t, tt.expected, tibiaDataUserAgentForRequest(c))
+		})
+	}
+
+	assert.Equal(t, TibiaDataUserAgent, tibiaDataUserAgentForRequest(nil))
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	assert.Equal(t, TibiaDataUserAgent, tibiaDataUserAgentForRequest(c))
+
+	tibiaDataUserAgents = nil
+	c.Request = httptest.NewRequest(http.MethodGet, "/v5/worlds", nil)
+	assert.Equal(t, TibiaDataUserAgent, tibiaDataUserAgentForRequest(c))
+}
+
+func TestTibiaDataInitUserAgents(t *testing.T) {
+	previousDebug, previousUserAgents := TibiaDataDebug, tibiaDataUserAgents
+	t.Cleanup(func() {
+		TibiaDataDebug, tibiaDataUserAgents = previousDebug, previousUserAgents
+	})
+
+	for _, debug := range []bool{false, true} {
+		t.Run(fmt.Sprintf("debug=%t", debug), func(t *testing.T) {
+			TibiaDataDebug = debug
+			tibiaDataInitUserAgents()
+			assert.Equal(t, map[int]string{
+				4: TibiaDataUserAgentGenerator(4),
+				5: TibiaDataUserAgentGenerator(5),
+			}, tibiaDataUserAgents)
+		})
+	}
+}
+
+func TestTibiaDataCollectorsUserAgent(t *testing.T) {
+	previousUA, previousClient, previousToken := TibiaDataUserAgent, tibiaDataClient, TibiaFansiteToken
+	t.Cleanup(func() {
+		TibiaDataUserAgent, tibiaDataClient, TibiaFansiteToken = previousUA, previousClient, previousToken
+	})
+
+	TibiaDataUserAgent = TibiaDataUserAgentGenerator(4)
+	TibiaFansiteToken = "test-token"
+	initTibiaDataClient()
+
+	for _, test := range []struct {
+		name      string
+		method    string
+		collector func(TibiaDataRequestStruct) (string, error)
+	}{
+		{"HTML GET", http.MethodGet, TibiaDataHTMLDataCollector},
+		{"HTML POST", http.MethodPost, TibiaDataHTMLDataCollector},
+		{"JSON GET", http.MethodGet, TibiaDataJSONDataCollector},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			requests := make(chan *http.Request, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests <- r
+				_, _ = w.Write([]byte(`{"ok":true}`))
+			}))
+			defer server.Close()
+
+			for _, userAgent := range []string{TibiaDataUserAgentGenerator(5), TibiaDataUserAgentGenerator(4), ""} {
+				body, err := test.collector(TibiaDataRequestStruct{
+					URL: server.URL, Method: test.method, RawBody: true, UserAgent: userAgent,
+				})
+				if !assert.NoError(t, err) {
+					return
+				}
+				assert.Equal(t, `{"ok":true}`, body)
+				request := <-requests
+				assert.Equal(t, test.method, request.Method)
+				expected := userAgent
+				if expected == "" {
+					expected = TibiaDataUserAgent
+				}
+				assert.Equal(t, expected, request.UserAgent())
+			}
+		})
+	}
+}
+
+func TestTibiaDataRequestHandlerUserAgent(t *testing.T) {
+	previousClient, previousToken, previousUserAgents := tibiaDataClient, TibiaFansiteToken, tibiaDataUserAgents
+	t.Cleanup(func() {
+		tibiaDataClient, TibiaFansiteToken, tibiaDataUserAgents = previousClient, previousToken, previousUserAgents
+	})
+	TibiaFansiteToken = "test-token"
+	initTibiaDataClient()
+	tibiaDataInitUserAgents()
+
+	for _, fansite := range []bool{false, true} {
+		for _, version := range []int{4, 5} {
+			for _, override := range []string{"", "custom-agent"} {
+				t.Run(fmt.Sprintf("fansite=%t/v%d/override=%s", fansite, version, override), func(t *testing.T) {
+					userAgents := make(chan string, 1)
+					server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						userAgents <- r.UserAgent()
+						_, _ = w.Write([]byte(`{"ok":true}`))
+					}))
+					defer server.Close()
+
+					w := httptest.NewRecorder()
+					c, _ := gin.CreateTestContext(w)
+					c.Request = httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v%d/worlds", version), nil)
+					tibiaDataRequestHandler(c, TibiaDataRequestStruct{
+						URL: server.URL, RawBody: true, UseFansiteAPI: fansite, UserAgent: override,
+					}, func(body string) (interface{}, error) {
+						assert.Equal(t, `{"ok":true}`, body)
+						return gin.H{"ok": true}, nil
+					}, "test")
+
+					if !assert.Equal(t, http.StatusOK, w.Code) {
+						return
+					}
+					expected := override
+					if expected == "" {
+						expected = TibiaDataUserAgentGenerator(version)
+					}
+					assert.Equal(t, expected, <-userAgents)
+				})
+			}
+		}
+	}
+}

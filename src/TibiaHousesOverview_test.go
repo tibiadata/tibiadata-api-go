@@ -1,13 +1,53 @@
 package main
 
 import (
+	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/tibiadata/tibiadata-api-go/src/static"
 )
+
+func TestTibiaHousesOverviewUserAgent(t *testing.T) {
+	previousUserAgents := tibiaDataUserAgents
+	t.Cleanup(func() { tibiaDataUserAgents = previousUserAgents })
+	tibiaDataInitUserAgents()
+
+	houseData, err := static.TestFiles.ReadFile("testdata/houses/overview/AnticaThaisHouses.html")
+	if !assert.NoError(t, err) {
+		return
+	}
+	guildData, err := static.TestFiles.ReadFile("testdata/houses/overview/AnticaThaisGuilds.html")
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	for _, version := range []int{4, 5} {
+		t.Run(fmt.Sprintf("v%d", version), func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v%d/houses/Antica/Thais", version), nil)
+			var urls []string
+			_, err := TibiaHousesOverviewImpl(c, "Antica", "Thais", func(request TibiaDataRequestStruct) (string, error) {
+				assert.Equal(t, TibiaDataUserAgentGenerator(version), request.UserAgent)
+				urls = append(urls, request.URL)
+				if strings.Contains(request.URL, "guildhalls") {
+					return string(guildData), nil
+				}
+				return string(houseData), nil
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, []string{
+				"https://www.tibia.com/community/?subtopic=houses&world=Antica&town=Thais&type=houses",
+				"https://www.tibia.com/community/?subtopic=houses&world=Antica&town=Thais&type=guildhalls",
+			}, urls)
+		})
+	}
+}
 
 func TestAnticaThaisHousesOverview(t *testing.T) {
 	houseFile, err := static.TestFiles.Open("testdata/houses/overview/AnticaThaisHouses.html")
