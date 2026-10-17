@@ -28,7 +28,7 @@ type GuildsOverviewResponse struct {
 	Information Information    `json:"information"`
 }
 
-func TibiaGuildsOverviewImpl(world string, BoxContentHTML string, url string) (GuildsOverviewResponse, error) {
+func TibiaGuildsOverviewImpl(world, BoxContentHTML, url string) (GuildsOverviewResponse, error) {
 	// Creating empty vars
 	var (
 		ActiveGuilds, FormationGuilds []OverviewGuild

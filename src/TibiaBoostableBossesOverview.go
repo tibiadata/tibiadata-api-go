@@ -27,7 +27,7 @@ type BoostableBossesOverviewResponse struct {
 	Information     Information              `json:"information"`
 }
 
-func TibiaBoostableBossesOverviewImpl(BoxContentHTML string, url string) (BoostableBossesOverviewResponse, error) {
+func TibiaBoostableBossesOverviewImpl(BoxContentHTML, url string) (BoostableBossesOverviewResponse, error) {
 	const (
 		bodyIndexer    = `<body`
 		endBodyIndexer = `</body>`

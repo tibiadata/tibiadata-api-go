@@ -53,7 +53,7 @@ var (
 	SixColumnRegex      = regexp.MustCompile(`<td>(.*)<\/td><td.*">(.*)<\/a><\/td><td.*">(.*)<\/td><td>(.*)<\/td><td.*>(.*)<\/td><td.*>(.*)<\/td>`)
 )
 
-func TibiaHighscoresImpl(world string, category validation.HighscoreCategory, vocationName string, currentPage int, BoxContentHTML string, url string) (HighscoresResponse, error) {
+func TibiaHighscoresImpl(world string, category validation.HighscoreCategory, vocationName string, currentPage int, BoxContentHTML, url string) (HighscoresResponse, error) {
 	// Loading HTML data into ReaderHTML for goquery with NewReader
 	ReaderHTML, err := goquery.NewDocumentFromReader(strings.NewReader(BoxContentHTML))
 	if err != nil {

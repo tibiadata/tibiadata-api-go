@@ -52,7 +52,7 @@ var (
 	CreatureLootRegex         = regexp.MustCompile(`.*yield (.*) experience.*carry (.*)with them.`)
 )
 
-func TibiaCreaturesCreatureImpl(race string, BoxContentHTML string, url string) (CreatureResponse, error) {
+func TibiaCreaturesCreatureImpl(race, BoxContentHTML, url string) (CreatureResponse, error) {
 	// local strings used in this function
 	localDamageString := " damage"
 

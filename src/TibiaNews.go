@@ -39,7 +39,7 @@ func normalizeTickerContentHTML(contentHTML string) string {
 	return contentHTML
 }
 
-func TibiaNewsImpl(NewsID int, rawUrl string, BoxContentHTML string) (NewsResponse, error) {
+func TibiaNewsImpl(NewsID int, rawUrl, BoxContentHTML string) (NewsResponse, error) {
 	// Declaring vars for later use..
 	var (
 		NewsData    News

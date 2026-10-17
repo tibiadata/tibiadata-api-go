@@ -50,7 +50,7 @@ var (
 )
 
 // TibiaWorldsWorld func
-func TibiaWorldsWorldImpl(world string, BoxContentHTML string, url string) (WorldResponse, error) {
+func TibiaWorldsWorldImpl(world, BoxContentHTML, url string) (WorldResponse, error) {
 	// TODO: We need to read the world name from the response rather than pass it into this func
 
 	// Loading HTML data into ReaderHTML for goquery with NewReader

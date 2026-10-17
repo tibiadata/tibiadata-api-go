@@ -72,7 +72,7 @@ var (
 )
 
 // TibiaHousesHouse func
-func TibiaHousesHouseImpl(houseid int, BoxContentHTML string, url string) (HouseResponse, error) {
+func TibiaHousesHouseImpl(houseid int, BoxContentHTML, url string) (HouseResponse, error) {
 	// Creating empty vars
 	var HouseData House
 

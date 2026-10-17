@@ -67,7 +67,7 @@ var (
 )
 
 // TibiaSpellsSpell func
-func TibiaSpellsSpellImpl(spell string, BoxContentHTML string, url string) (SpellInformationResponse, error) {
+func TibiaSpellsSpellImpl(spell, BoxContentHTML, url string) (SpellInformationResponse, error) {
 	// TODO: There is currently a bug with description, it always comes back empty
 
 	// Loading HTML data into ReaderHTML for goquery with NewReader

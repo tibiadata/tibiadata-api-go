@@ -61,7 +61,7 @@ var (
 	FansiteAnchorRegex      = regexp.MustCompile(`.*src="(.*)" alt=".*`)
 )
 
-func TibiaFansitesImpl(BoxContentHTML string, url string) (FansitesResponse, error) {
+func TibiaFansitesImpl(BoxContentHTML, url string) (FansitesResponse, error) {
 	// Loading HTML data into ReaderHTML for goquery with NewReader
 	ReaderHTML, err := goquery.NewDocumentFromReader(strings.NewReader(BoxContentHTML))
 	if err != nil {
