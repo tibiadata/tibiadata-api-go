@@ -117,6 +117,20 @@ type fansiteAPIAccountCharacter struct {
 	WasRecentlyTradedAndNotRenamed bool    `json:"wasRecentlyTradedAndNotRenamed"`
 }
 
+// fansitePosition maps fansite API position values to the display strings used
+// by the HTML parser. It accepts the AccountPosition enum ("none",
+// "cipSoftMember", "customerSupport") as well as the display strings returned
+// in accountCharacters[].group (e.g. "CipSoft Member").
+func fansitePosition(value string) string {
+	switch strings.ToLower(strings.ReplaceAll(value, " ", "")) {
+	case "cipsoftmember":
+		return cipSoftMemberPosition
+	case "customersupport":
+		return customerSupportPosition
+	}
+	return ""
+}
+
 func fansiteUnixToDatetime(ts int64) string {
 	if ts <= 0 {
 		return ""
@@ -349,7 +363,10 @@ type CharacterResponse struct {
 // best to just simply use the Br constant value.
 const Br = 0x202
 
-const cipSoftMemberPosition = "CipSoft Member"
+const (
+	cipSoftMemberPosition   = "CipSoft Member"
+	customerSupportPosition = "Customer Support"
+)
 
 // TibiaCharactersCharacter func
 func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterResponse, error) {
@@ -476,12 +493,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 			accountBadges := []AccountBadges{}
 			if fansiteData.CharacterAccountInformation != nil {
 				accountInformation.Created = fansiteUnixToDatetime(fansiteData.CharacterAccountInformation.CreationDate)
-				switch fansiteData.CharacterAccountInformation.Position {
-				case "cipSoftMember":
-					accountInformation.Position = cipSoftMemberPosition
-				case "customerSupport":
-					accountInformation.Position = "Customer Support"
-				}
+				accountInformation.Position = fansitePosition(fansiteData.CharacterAccountInformation.Position)
 				if fansiteData.CharacterAccountInformation.LoyaltyTitle != nil {
 					accountInformation.LoyaltyTitle = *fansiteData.CharacterAccountInformation.LoyaltyTitle
 				}
@@ -501,8 +513,11 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					status = "online"
 				}
 				position := ""
-				if oc.Group != nil && *oc.Group == "cipSoftMember" {
-					position = cipSoftMemberPosition
+				if oc.Group != nil {
+					position = fansitePosition(*oc.Group)
+				}
+				if position != "" && strings.EqualFold(oc.Name, characterInfo.Name) {
+					characterInfo.Position = position
 				}
 				otherCharacters = append(otherCharacters, OtherCharacters{
 					Name:     oc.Name,
