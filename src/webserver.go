@@ -50,6 +50,7 @@ const (
 	cacheMaxAgeWorlds     = 60 * time.Second
 	cacheControlHeader    = "Cache-Control"
 	userAgentHeader       = "User-Agent"
+	highscoresPath        = "/highscores/"
 )
 
 // initTibiaDataClient creates the shared resty client with static configuration.
@@ -278,7 +279,7 @@ func registerAPIVersionRoutes(version *gin.RouterGroup) {
 		if TibiaDataCacheControl {
 			c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
 		}
-		c.Redirect(http.StatusMovedPermanently, version.BasePath()+"/highscores/"+c.Param("world")+"/experience/"+TibiaDataDefaultVoc+"/1")
+		c.Redirect(http.StatusMovedPermanently, version.BasePath()+highscoresPath+c.Param("world")+"/experience/"+TibiaDataDefaultVoc+"/1")
 	})
 	version.GET("/highscores/:world/:category", func(c *gin.Context) {
 		category := c.Param("category")
@@ -293,7 +294,7 @@ func registerAPIVersionRoutes(version *gin.RouterGroup) {
 		if TibiaDataCacheControl {
 			c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
 		}
-		c.Redirect(http.StatusMovedPermanently, version.BasePath()+"/highscores/"+c.Param("world")+"/"+category+"/"+TibiaDataDefaultVoc+"/1")
+		c.Redirect(http.StatusMovedPermanently, version.BasePath()+highscoresPath+c.Param("world")+"/"+category+"/"+TibiaDataDefaultVoc+"/1")
 	})
 	version.GET("/highscores/:world/:category/:vocation", tibiaHighscores)
 	version.GET("/highscores/:world/:category/:vocation/:page", tibiaHighscores)
@@ -674,7 +675,7 @@ func tibiaHighscores(c *gin.Context) {
 // tibiaHighscoresRedirectToCanonicalCategory redirects a highscores request to the canonical category name
 func tibiaHighscoresRedirectToCanonicalCategory(c *gin.Context, canonical string) {
 	location := "/v" + strconv.Itoa(tibiaDataAPIDetailsForRequest(c).Version) +
-		"/highscores/" + url.PathEscape(c.Param("world")) +
+		highscoresPath + url.PathEscape(c.Param("world")) +
 		"/" + canonical +
 		"/" + url.PathEscape(c.Param("vocation"))
 	if page := c.Param("page"); page != "" {
