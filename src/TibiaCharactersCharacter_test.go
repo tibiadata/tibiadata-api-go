@@ -5080,3 +5080,68 @@ func TestAchievementNameEncodingParityHTMLAndFansite(t *testing.T) {
 	assert.Equal("The Cake's the Truth", fansiteResp.Character.Achievements[4].Name)
 	assert.ElementsMatch(htmlResp.Character.Achievements, fansiteResp.Character.Achievements)
 }
+
+func TestFansitePosition(t *testing.T) {
+	assert := assert.New(t)
+	assert.Equal("CipSoft Member", fansitePosition("cipSoftMember"))
+	assert.Equal("CipSoft Member", fansitePosition("CipSoft Member"))
+	assert.Equal("Customer Support", fansitePosition("customerSupport"))
+	assert.Equal("Customer Support", fansitePosition("Customer Support"))
+	assert.Equal("", fansitePosition("none"))
+	assert.Equal("", fansitePosition(""))
+}
+
+// TestCharacterJSONPositions verifies that the fansite API (JSON) parsing path
+// sets account, other characters and character positions (issue #776).
+func TestCharacterJSONPositions(t *testing.T) {
+	file, err := static.TestFiles.Open("testdata/characters/Mirade.json")
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("file reading error: %s", err)
+	}
+
+	assert := assert.New(t)
+
+	response, err := TibiaCharactersCharacterImpl(string(data), "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Mirade")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	character := response.Character
+	assert.Equal("Mirade", character.CharacterInfo.Name)
+	assert.Equal("", character.CharacterInfo.Position)
+	assert.Equal("CipSoft Member", character.AccountInformation.Position)
+	assert.Equal(4, len(character.OtherCharacters))
+
+	expectedPositions := map[string]string{
+		"CM Mirade":    "CipSoft Member",
+		"Drado Shael":  "CipSoft Member",
+		"Leri Thalios": "CipSoft Member",
+		"Mirade":       "",
+	}
+	for _, oc := range character.OtherCharacters {
+		assert.Equal(expectedPositions[oc.Name], oc.Position, oc.Name)
+	}
+
+	var fansiteData fansiteAPICharacterResponse
+	if err := json.Unmarshal(data, &fansiteData); err != nil {
+		t.Fatalf("fixture unmarshalling error: %s", err)
+	}
+	fansiteData.CharacterGameInformation.CharacterName = "CM Mirade"
+	cmData, err := json.Marshal(fansiteData)
+	if err != nil {
+		t.Fatalf("fixture marshalling error: %s", err)
+	}
+
+	cmResponse, err := TibiaCharactersCharacterImpl(string(cmData), "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/CM%20Mirade")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.Equal("CipSoft Member", cmResponse.Character.CharacterInfo.Position)
+	assert.Equal("CipSoft Member", cmResponse.Character.AccountInformation.Position)
+}

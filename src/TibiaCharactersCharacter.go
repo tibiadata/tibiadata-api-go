@@ -117,6 +117,18 @@ type fansiteAPIAccountCharacter struct {
 	WasRecentlyTradedAndNotRenamed bool    `json:"wasRecentlyTradedAndNotRenamed"`
 }
 
+// fansitePosition maps fansite API position/group values (e.g. "cipSoftMember"
+// or "CipSoft Member") to the display strings used by the HTML parser.
+func fansitePosition(value string) string {
+	switch strings.ToLower(strings.ReplaceAll(value, " ", "")) {
+	case "cipsoftmember":
+		return cipSoftMemberPosition
+	case "customersupport":
+		return "Customer Support"
+	}
+	return ""
+}
+
 func fansiteUnixToDatetime(ts int64) string {
 	if ts <= 0 {
 		return ""
@@ -476,12 +488,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 			accountBadges := []AccountBadges{}
 			if fansiteData.CharacterAccountInformation != nil {
 				accountInformation.Created = fansiteUnixToDatetime(fansiteData.CharacterAccountInformation.CreationDate)
-				switch fansiteData.CharacterAccountInformation.Position {
-				case "cipSoftMember":
-					accountInformation.Position = cipSoftMemberPosition
-				case "customerSupport":
-					accountInformation.Position = "Customer Support"
-				}
+				accountInformation.Position = fansitePosition(fansiteData.CharacterAccountInformation.Position)
 				if fansiteData.CharacterAccountInformation.LoyaltyTitle != nil {
 					accountInformation.LoyaltyTitle = *fansiteData.CharacterAccountInformation.LoyaltyTitle
 				}
@@ -501,8 +508,11 @@ func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterR
 					status = "online"
 				}
 				position := ""
-				if oc.Group != nil && *oc.Group == "cipSoftMember" {
-					position = cipSoftMemberPosition
+				if oc.Group != nil {
+					position = fansitePosition(*oc.Group)
+				}
+				if position != "" && strings.EqualFold(oc.Name, characterInfo.Name) {
+					characterInfo.Position = position
 				}
 				otherCharacters = append(otherCharacters, OtherCharacters{
 					Name:     oc.Name,
