@@ -23,6 +23,7 @@ jobs:
     if: github.event_name != 'pull_request'
 
     permissions:
+      artifact-metadata: write
       attestations: write
       contents: read
       id-token: write
@@ -123,6 +124,7 @@ jobs:
       - build
 
     permissions:
+      artifact-metadata: write
       attestations: write
       contents: read
       id-token: write
