@@ -28,6 +28,15 @@ func IsHighscoreCategoryValid(hs string) error {
 	return ErrorHighscoreCategoryDoesNotExist
 }
 
+// CanonicalHighscoreCategory returns the canonical lowercase name for a valid highscore category or alias
+func CanonicalHighscoreCategory(hs string) (string, error) {
+	if err := IsHighscoreCategoryValid(hs); err != nil {
+		return "", err
+	}
+
+	return HighscoreCategoryFromString(hs).String()
+}
+
 type HighscoreCategory int
 
 const (

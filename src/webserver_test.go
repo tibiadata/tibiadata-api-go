@@ -1059,3 +1059,87 @@ func TestTibiaDataRequestHandlerUserAgent(t *testing.T) {
 		}
 	}
 }
+
+func TestHighscoresCategoryCanonicalRedirect(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	registerAPIVersions(router)
+
+	previousCacheControl := TibiaDataCacheControl
+	TibiaDataCacheControl = true
+	t.Cleanup(func() { TibiaDataCacheControl = previousCacheControl })
+
+	serve := func(path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		return w
+	}
+
+	t.Run("v5 redirects aliases and case variants", func(t *testing.T) {
+		for _, test := range []struct{ path, location string }{
+			{"/v5/highscores/Solidera/magic/all/1", "/v5/highscores/Solidera/magiclevel/all/1"},
+			{"/v5/highscores/Solidera/MagicLevel/all/2", "/v5/highscores/Solidera/magiclevel/all/2"},
+			{"/v5/highscores/all/drome/all", "/v5/highscores/all/dromescore/all"},
+			{"/v5/highscores/all/axe/all/1", "/v5/highscores/all/axefighting/all/1"},
+			{"/v5/highscores/all/club/all/1", "/v5/highscores/all/clubfighting/all/1"},
+			{"/v5/highscores/all/sword/all/1", "/v5/highscores/all/swordfighting/all/1"},
+			{"/v5/highscores/all/distance/all/1", "/v5/highscores/all/distancefighting/all/1"},
+			{"/v5/highscores/all/fist/all/1", "/v5/highscores/all/fistfighting/all/1"},
+			{"/v5/highscores/all/shield/all/1", "/v5/highscores/all/shielding/all/1"},
+			{"/v5/highscores/all/loyalty/all/1", "/v5/highscores/all/loyaltypoints/all/1"},
+			{"/v5/highscores/all/charm/all/1", "/v5/highscores/all/charmpoints/all/1"},
+			{"/v5/highscores/all/charms/all/1", "/v5/highscores/all/charmpoints/all/1"},
+			{"/v5/highscores/all/boss/all/1", "/v5/highscores/all/bosspoints/all/1"},
+			{"/v5/highscores/all/bosses/all/1", "/v5/highscores/all/bosspoints/all/1"},
+			{"/v5/highscores/all/achievement/all/1", "/v5/highscores/all/achievements/all/1"},
+			{"/v5/highscores/all/goshnar/all/1", "/v5/highscores/all/goshnarstaint/all/1"},
+			{"/v5/highscores/all/magic/all/1?foo=bar", "/v5/highscores/all/magiclevel/all/1?foo=bar"},
+			{"/v5/highscores/Solidera/magic", "/v5/highscores/Solidera/magiclevel/all/1"},
+			{"/v5/highscores/Solidera/Experience", "/v5/highscores/Solidera/experience/all/1"},
+		} {
+			w := serve(test.path)
+			assert.Equal(t, http.StatusMovedPermanently, w.Code, test.path)
+			assert.Equal(t, test.location, w.Header().Get("Location"), test.path)
+			assert.Equal(t, "public, max-age=900, s-maxage=900", w.Header().Get(cacheControlHeader), test.path)
+		}
+	})
+
+	t.Run("canonical v5 and v4 aliases are not redirected", func(t *testing.T) {
+		// page 0 fails validation before any upstream request is made
+		for _, path := range []string{
+			"/v5/highscores/all/magiclevel/all/0",
+			"/v4/highscores/all/magic/all/0",
+			"/v4/highscores/all/MagicLevel/all/0",
+		} {
+			w := serve(path)
+			assert.Equal(t, http.StatusBadRequest, w.Code, path)
+			assert.Empty(t, w.Header().Get("Location"), path)
+		}
+	})
+
+	t.Run("v4 two segment route keeps category", func(t *testing.T) {
+		w := serve("/v4/highscores/Solidera/magic")
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "/v4/highscores/Solidera/magic/all/1", w.Header().Get("Location"))
+	})
+
+	t.Run("invalid category returns JSON error", func(t *testing.T) {
+		for _, path := range []string{
+			"/v4/highscores/all/notacategory/all/1",
+			"/v5/highscores/all/notacategory/all/1",
+			"/v5/highscores/all/notacategory",
+		} {
+			w := serve(path)
+			assert.Equal(t, http.StatusNotFound, w.Code, path)
+			assert.Empty(t, w.Header().Get("Location"), path)
+			assert.Empty(t, w.Header().Get(cacheControlHeader), path)
+
+			var resp struct {
+				Information Information `json:"information"`
+			}
+			if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp), path) {
+				assert.Equal(t, validation.ErrorHighscoreCategoryDoesNotExist.Code(), resp.Information.Status.Error, path)
+			}
+		}
+	})
+}

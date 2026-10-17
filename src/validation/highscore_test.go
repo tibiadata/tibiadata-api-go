@@ -180,3 +180,40 @@ func TestHighscoreCategoryFromString(t *testing.T) {
 		})
 	}
 }
+
+func TestCanonicalHighscoreCategory(t *testing.T) {
+	for input, expected := range map[string]string{
+		"magic":        "magiclevel",
+		"mlvl":         "magiclevel",
+		"MagicLevel":   "magiclevel",
+		"magiclevel":   "magiclevel",
+		"drome":        "dromescore",
+		"axe":          "axefighting",
+		"club":         "clubfighting",
+		"sword":        "swordfighting",
+		"distance":     "distancefighting",
+		"fist":         "fistfighting",
+		"shield":       "shielding",
+		"loyalty":      "loyaltypoints",
+		"charm":        "charmpoints",
+		"charms":       "charmpoints",
+		"charmspoints": "charmpoints",
+		"boss":         "bosspoints",
+		"bosses":       "bosspoints",
+		"achievement":  "achievements",
+		"goshnar":      "goshnarstaint",
+		"goshnars":     "goshnarstaint",
+		"bountypoint":  "bountypoints",
+		"weeklytask":   "weeklytasks",
+		"phosphorus":   "phosphorusrecord",
+		"EXPERIENCE":   "experience",
+		"fishing":      "fishing",
+	} {
+		got, err := CanonicalHighscoreCategory(input)
+		assert.NoError(t, err, input)
+		assert.Equal(t, expected, got, input)
+	}
+
+	_, err := CanonicalHighscoreCategory("notacategory")
+	assert.ErrorIs(t, err, ErrorHighscoreCategoryDoesNotExist)
+}

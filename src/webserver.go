@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"reflect"
@@ -49,6 +50,7 @@ const (
 	cacheMaxAgeWorlds     = 60 * time.Second
 	cacheControlHeader    = "Cache-Control"
 	userAgentHeader       = "User-Agent"
+	highscoresPath        = "/highscores/"
 )
 
 // initTibiaDataClient creates the shared resty client with static configuration.
@@ -277,13 +279,22 @@ func registerAPIVersionRoutes(version *gin.RouterGroup) {
 		if TibiaDataCacheControl {
 			c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
 		}
-		c.Redirect(http.StatusMovedPermanently, version.BasePath()+"/highscores/"+c.Param("world")+"/experience/"+TibiaDataDefaultVoc+"/1")
+		c.Redirect(http.StatusMovedPermanently, version.BasePath()+highscoresPath+c.Param("world")+"/experience/"+TibiaDataDefaultVoc+"/1")
 	})
 	version.GET("/highscores/:world/:category", func(c *gin.Context) {
+		category := c.Param("category")
+		if tibiaDataAPIDetailsForRequest(c).Version >= 5 {
+			canonical, err := validation.CanonicalHighscoreCategory(category)
+			if err != nil {
+				TibiaDataErrorHandler(c, validation.ErrorHighscoreCategoryDoesNotExist, http.StatusBadRequest)
+				return
+			}
+			category = canonical
+		}
 		if TibiaDataCacheControl {
 			c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
 		}
-		c.Redirect(http.StatusMovedPermanently, version.BasePath()+"/highscores/"+c.Param("world")+"/"+c.Param("category")+"/"+TibiaDataDefaultVoc+"/1")
+		c.Redirect(http.StatusMovedPermanently, version.BasePath()+highscoresPath+c.Param("world")+"/"+category+"/"+TibiaDataDefaultVoc+"/1")
 	})
 	version.GET("/highscores/:world/:category/:vocation", tibiaHighscores)
 	version.GET("/highscores/:world/:category/:vocation/:page", tibiaHighscores)
@@ -564,6 +575,7 @@ func tibiaGuildsOverview(c *gin.Context) {
 //	@Summary		Highscores of tibia
 //	@Description	Show all highscores of tibia
 //	@Description	In restriction mode, the valid vocation option is all.
+//	@Description	Category aliases and case variants (e.g. magic or MagicLevel) are redirected with 301 to the canonical lowercase category name. Unknown categories return 404 with error 11004.
 //	@Tags			highscores
 //	@Accept			json
 //	@Produce		json
@@ -590,6 +602,20 @@ func tibiaHighscores(c *gin.Context) {
 		return
 	}
 
+	if category != "" {
+		canonical, err := validation.CanonicalHighscoreCategory(category)
+		if err != nil {
+			TibiaDataErrorHandler(c, validation.ErrorHighscoreCategoryDoesNotExist, http.StatusBadRequest)
+			return
+		}
+
+		// API v5 serves each category from a single canonical, cacheable URL
+		if canonical != category && tibiaDataAPIDetailsForRequest(c).Version >= 5 {
+			tibiaHighscoresRedirectToCanonicalCategory(c, canonical)
+			return
+		}
+	}
+
 	// Adding fix for First letter to be upper and rest lower
 	if strings.EqualFold(world, "all") {
 		world = ""
@@ -607,14 +633,6 @@ func tibiaHighscores(c *gin.Context) {
 
 		if !exists {
 			TibiaDataErrorHandler(c, validation.ErrorWorldDoesNotExist, http.StatusBadRequest)
-			return
-		}
-	}
-
-	if category != "" {
-		err = validation.IsHighscoreCategoryValid(category)
-		if err != nil {
-			TibiaDataErrorHandler(c, validation.ErrorHighscoreCategoryDoesNotExist, http.StatusBadRequest)
 			return
 		}
 	}
@@ -652,6 +670,25 @@ func tibiaHighscores(c *gin.Context) {
 			return TibiaHighscoresImpl(world, highscoreCategory, vocationName, TibiaDataStringToInteger(page), BoxContentHTML, tibiadataRequest.URL)
 		},
 		"TibiaHighscores")
+}
+
+// tibiaHighscoresRedirectToCanonicalCategory redirects a highscores request to the canonical category name
+func tibiaHighscoresRedirectToCanonicalCategory(c *gin.Context, canonical string) {
+	location := "/v" + strconv.Itoa(tibiaDataAPIDetailsForRequest(c).Version) +
+		highscoresPath + url.PathEscape(c.Param("world")) +
+		"/" + canonical +
+		"/" + url.PathEscape(c.Param("vocation"))
+	if page := c.Param("page"); page != "" {
+		location += "/" + url.PathEscape(page)
+	}
+	if c.Request.URL.RawQuery != "" {
+		location += "?" + c.Request.URL.RawQuery
+	}
+
+	if TibiaDataCacheControl {
+		c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
+	}
+	c.Redirect(http.StatusMovedPermanently, location)
 }
 
 // House godoc
