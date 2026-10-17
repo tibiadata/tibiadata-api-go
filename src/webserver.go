@@ -574,7 +574,7 @@ func tibiaGuildsOverview(c *gin.Context) {
 //	@Summary		Highscores of tibia
 //	@Description	Show all highscores of tibia
 //	@Description	In restriction mode, the valid vocation option is all.
-//	@Description	Category aliases and case variants (e.g. magic or MagicLevel) are redirected with 301 to the canonical lowercase category name.
+//	@Description	Category aliases and case variants (e.g. magic or MagicLevel) are redirected with 301 to the canonical lowercase category name. Unknown categories return 404 with error 11004.
 //	@Tags			highscores
 //	@Accept			json
 //	@Produce		json

@@ -204,7 +204,7 @@ Those are the current existing endpoints.
 
 ### Highscore categories
 
-On `/v5/highscores`, category aliases and case variants (for example `magic`, `mlvl` or `MagicLevel`) are answered with a `301` redirect to the canonical lowercase category name (for example `magiclevel`), so each category is served from a single cacheable URL. `/v4/highscores` keeps serving aliases directly. Unknown categories return a JSON error (`11004`).
+On `/v5/highscores`, category aliases and case variants (for example `magic`, `mlvl` or `MagicLevel`) are answered with a `301` redirect to the canonical lowercase category name (for example `magiclevel`), so each category is served from a single cacheable URL. `/v4/highscores` keeps serving aliases directly. Unknown categories return HTTP `404` with JSON error `11004`.
 
 ### Deprecated Endpoints
 
