@@ -117,8 +117,10 @@ type fansiteAPIAccountCharacter struct {
 	WasRecentlyTradedAndNotRenamed bool    `json:"wasRecentlyTradedAndNotRenamed"`
 }
 
-// fansitePosition maps fansite API position/group values (e.g. "cipSoftMember"
-// or "CipSoft Member") to the display strings used by the HTML parser.
+// fansitePosition maps fansite API position values to the display strings used
+// by the HTML parser. It accepts the AccountPosition enum ("none",
+// "cipSoftMember", "customerSupport") as well as the display strings returned
+// in accountCharacters[].group (e.g. "CipSoft Member").
 func fansitePosition(value string) string {
 	switch strings.ToLower(strings.ReplaceAll(value, " ", "")) {
 	case "cipsoftmember":
