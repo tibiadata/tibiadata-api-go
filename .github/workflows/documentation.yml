@@ -19,13 +19,9 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install swag by swaggo
-        run: |
-          go install github.com/swaggo/swag/cmd/swag@latest
-
       - name: Run swag to initiate docs
         run: |
-          swag init --dir=src/
+          go tool -modfile=tools/go.mod swag init --dir=src/
 
       - name: Manipulate swagger.json with Release info
         run: |
