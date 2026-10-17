@@ -5145,3 +5145,61 @@ func TestCharacterJSONPositions(t *testing.T) {
 	assert.Equal("CipSoft Member", cmResponse.Character.CharacterInfo.Position)
 	assert.Equal("CipSoft Member", cmResponse.Character.AccountInformation.Position)
 }
+
+func readCharacterTestFile(t *testing.T, name string) string {
+	t.Helper()
+	file, err := static.TestFiles.Open("testdata/characters/" + name)
+	if err != nil {
+		t.Fatalf("file opening error: %s", err)
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatalf("file reading error: %s", err)
+	}
+	return string(data)
+}
+
+func otherCharacterPositions(characters []OtherCharacters) map[string]string {
+	positions := make(map[string]string, len(characters))
+	for _, oc := range characters {
+		positions[oc.Name] = oc.Position
+	}
+	return positions
+}
+
+func TestCharacterMiradeHTMLPositions(t *testing.T) {
+	response, err := TibiaCharactersCharacterImpl(readCharacterTestFile(t, "Mirade.html"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	character := response.Character
+	assert.Equal("Mirade", character.CharacterInfo.Name)
+	assert.Equal("", character.CharacterInfo.Position)
+	assert.Equal("CipSoft Member", character.AccountInformation.Position)
+	assert.Equal(map[string]string{
+		"CM Mirade":    "CipSoft Member",
+		"Drado Shael":  "CipSoft Member",
+		"Leri Thalios": "CipSoft Member",
+		"Mirade":       "",
+	}, otherCharacterPositions(character.OtherCharacters))
+}
+
+func TestCharacterMiradePositionParityHTMLAndFansite(t *testing.T) {
+	htmlResp, err := TibiaCharactersCharacterImpl(readCharacterTestFile(t, "Mirade.html"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fansiteResp, err := TibiaCharactersCharacterImpl(readCharacterTestFile(t, "Mirade.json"), "https://fansiteapi.tibia.com/api/v1/CharacterData/GetCharacter/Mirade")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert := assert.New(t)
+	assert.Equal(htmlResp.Character.CharacterInfo.Position, fansiteResp.Character.CharacterInfo.Position)
+	assert.Equal(htmlResp.Character.AccountInformation.Position, fansiteResp.Character.AccountInformation.Position)
+	assert.Equal(otherCharacterPositions(htmlResp.Character.OtherCharacters), otherCharacterPositions(fansiteResp.Character.OtherCharacters))
+}
