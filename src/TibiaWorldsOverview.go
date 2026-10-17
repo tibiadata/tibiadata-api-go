@@ -46,7 +46,7 @@ var (
 )
 
 // TibiaWorldsOverview func
-func TibiaWorldsOverviewImpl(BoxContentHTML string, url string) (WorldsOverviewResponse, error) {
+func TibiaWorldsOverviewImpl(BoxContentHTML, url string) (WorldsOverviewResponse, error) {
 	// Loading HTML data into ReaderHTML for goquery with NewReader
 	ReaderHTML, err := goquery.NewDocumentFromReader(strings.NewReader(BoxContentHTML))
 	if err != nil {

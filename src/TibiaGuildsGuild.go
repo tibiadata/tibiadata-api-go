@@ -81,7 +81,7 @@ var (
 	GuildMemberInvitesInformationRegex = regexp.MustCompile(`<td><a.*">(.*)<\/a><\/td><td>(.*)<\/td>`)
 )
 
-func TibiaGuildsGuildImpl(guild string, BoxContentHTML string, url string) (GuildResponse, error) {
+func TibiaGuildsGuildImpl(guild, BoxContentHTML, url string) (GuildResponse, error) {
 	// Creating empty vars
 	var (
 		MembersData                                                                                                                                                    []GuildMember

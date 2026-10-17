@@ -39,7 +39,7 @@ type KillStatisticsResponse struct {
 	Information    Information    `json:"information"`
 }
 
-func TibiaKillstatisticsImpl(world string, BoxContentHTML string, url string) (KillStatisticsResponse, error) {
+func TibiaKillstatisticsImpl(world, BoxContentHTML, url string) (KillStatisticsResponse, error) {
 	// Loading HTML data into ReaderHTML for goquery with NewReader
 	ReaderHTML, err := goquery.NewDocumentFromReader(strings.NewReader(BoxContentHTML))
 	if err != nil {

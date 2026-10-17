@@ -37,7 +37,7 @@ type SpellsOverviewResponse struct {
 }
 
 // TibiaSpellsOverview func
-func TibiaSpellsOverviewImpl(vocationName string, BoxContentHTML string, url string) (SpellsOverviewResponse, error) {
+func TibiaSpellsOverviewImpl(vocationName, BoxContentHTML, url string) (SpellsOverviewResponse, error) {
 	// Loading HTML data into ReaderHTML for goquery with NewReader
 	ReaderHTML, err := goquery.NewDocumentFromReader(strings.NewReader(BoxContentHTML))
 	if err != nil {

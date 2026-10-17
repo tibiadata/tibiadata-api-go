@@ -36,7 +36,7 @@ var (
 	CreatureInformationRegex        = regexp.MustCompile(`.*race=(.*)"><img src="(.*)" border.*div>(.*)<\/div>`)
 )
 
-func TibiaCreaturesOverviewImpl(BoxContentHTML string, url string) (CreaturesOverviewResponse, error) {
+func TibiaCreaturesOverviewImpl(BoxContentHTML, url string) (CreaturesOverviewResponse, error) {
 	var BoostedCreatureName, BoostedCreatureRace, BoostedCreatureImage string
 
 	// Loading HTML data into ReaderHTML for goquery with NewReader

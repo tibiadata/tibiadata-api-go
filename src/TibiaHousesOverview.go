@@ -49,7 +49,7 @@ var (
 )
 
 // TibiaHousesOverview func
-func TibiaHousesOverviewImpl(c *gin.Context, world string, town string, htmlDataCollector func(TibiaDataRequestStruct) (string, error)) (HousesOverviewResponse, error) {
+func TibiaHousesOverviewImpl(c *gin.Context, world, town string, htmlDataCollector func(TibiaDataRequestStruct) (string, error)) (HousesOverviewResponse, error) {
 	// Creating empty vars
 	var HouseData, GuildhallData []HousesHouse
 	var TibiaHouseURLs []string

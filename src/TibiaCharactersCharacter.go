@@ -158,7 +158,7 @@ func fansiteUnixToDate(ts int64) string {
 // fansite API data. Killer names must be passed as returned by the fansite
 // API (including any "a "/"an " article), since that is how tibia.com
 // displays them.
-func fansiteDeathReason(level int, killers []Killers, assists []Killers) string {
+func fansiteDeathReason(level int, killers, assists []Killers) string {
 	playerKillers := 0
 	for _, k := range killers {
 		if k.Player {
@@ -369,7 +369,7 @@ const (
 )
 
 // TibiaCharactersCharacter func
-func TibiaCharactersCharacterImpl(BoxContentHTML string, url string) (CharacterResponse, error) {
+func TibiaCharactersCharacterImpl(BoxContentHTML, url string) (CharacterResponse, error) {
 	if tibiaDataLooksLikeJSON(BoxContentHTML) {
 		var fansiteData fansiteAPICharacterResponse
 		if err := json.Unmarshal([]byte(BoxContentHTML), &fansiteData); err == nil {
