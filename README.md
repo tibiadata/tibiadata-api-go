@@ -25,6 +25,7 @@ Documentation of API endpoints can be found on [docs.tibiadata.com](https://docs
   - [Available endpoints](#available-endpoints)
   - [Deprecated endpoints](#deprecated-endpoints)
   - [Restricted endpoints](#restricted-endpoints)
+- [CI authentication](#ci-authentication)
 - [General information](#general-information)
 - [Credits](#credits)
 
@@ -227,6 +228,19 @@ On startup, when a valid token is configured, the API performs a best-effort che
 The data returned by the HTML and JSON collector can differ, which may lead to discrepancies in the information provided by the two sources. Such findings are:
 
 - Account achievements on the HTML page do not reflect the actual achievements grade as correctly shown by the JSON collector.
+
+## CI authentication
+
+The build and documentation workflows use the `tibiadata-ci` GitHub App to send
+cross-repository `repository_dispatch` events. Organization Actions variable
+`TIBIADATA_CI_CLIENT_ID` and secret `TIBIADATA_CI_PRIVATE_KEY` must be available to
+this repository. The app must be installed on `tibiadata-api-docs`,
+`tibiadata-argocd-app-of-apps`, and `tibiadata-helm-charts` with **Contents: write**
+permission.
+
+Each dispatch creates a short-lived installation token restricted to its
+destination repository and **Contents: write**. The token is revoked at the end
+of the job. Other operations continue to use the workflow's `GITHUB_TOKEN`.
 
 ## General information
 

@@ -36,10 +36,20 @@ jobs:
           file: docs/swagger.json
           tag: ${{ github.ref }}
 
+      - name: Create tibiadata-api-docs dispatch token
+        id: app_token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.TIBIADATA_CI_CLIENT_ID }}
+          private-key: ${{ secrets.TIBIADATA_CI_PRIVATE_KEY }}
+          owner: tibiadata
+          repositories: tibiadata-api-docs
+          permission-contents: write
+
       - name: Trigger workflow in tibiadata-api-docs repo
         uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 #v4.0.1
         with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          token: ${{ steps.app_token.outputs.token }}
           repository: tibiadata/tibiadata-api-docs
           event-type: tibiadata-api-docs-release-update
           client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}", "tag_name": "${{ github.event.release.tag_name }}"}'
