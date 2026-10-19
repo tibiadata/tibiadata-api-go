@@ -11,6 +11,9 @@ TibiaData API written in Golang and deployed in container (version v3 and above)
 
 Documentation of API endpoints can be found on [docs.tibiadata.com](https://docs.tibiadata.com).
 
+The character response's `married_to` field uses regular spaces (`U+0020`) instead
+of non-breaking spaces (`U+00A0`) for both HTML and fansite API sources.
+
 ## Table of Contents
 
 - [API versions](#api-versions)

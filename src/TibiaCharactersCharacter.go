@@ -411,7 +411,7 @@ func TibiaCharactersCharacterImpl(BoxContentHTML, url string) (CharacterResponse
 				characterInfo.FormerNames = fansiteData.CharacterGameInformation.FormerNames
 			}
 			if fansiteData.CharacterGameInformation.Spouse != nil {
-				characterInfo.MarriedTo = *fansiteData.CharacterGameInformation.Spouse
+				characterInfo.MarriedTo = strings.ReplaceAll(*fansiteData.CharacterGameInformation.Spouse, "\u00A0", " ")
 			}
 			if fansiteData.CharacterGameInformation.FormerWorld != nil && *fansiteData.CharacterGameInformation.FormerWorld != "" {
 				characterInfo.FormerWorlds = strings.Split(*fansiteData.CharacterGameInformation.FormerWorld, ", ")

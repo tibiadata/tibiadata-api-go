@@ -29,7 +29,7 @@ func TestFansiteUnixConversions(t *testing.T) {
 
 func TestFansiteCharacterJSONOptionalFields(t *testing.T) {
 	comment := "first line\r\nsecond line"
-	spouse := "Married Character"
+	spouse := "Married\u00A0Character"
 	formerWorld := "Antica, Premia"
 	guildName := "Test Guild"
 	guildRank := "Leader"
@@ -223,6 +223,7 @@ func TestFansiteCharacterJSONFixtures(t *testing.T) {
 }
 
 func TestCharacterTrollefar(t *testing.T) {
+	var marriedTo [2]string
 	testCases := []struct {
 		name          string
 		fixture       string
@@ -243,7 +244,7 @@ func TestCharacterTrollefar(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			file, err := static.TestFiles.Open(tc.fixture)
 			if err != nil {
@@ -279,6 +280,7 @@ func TestCharacterTrollefar(t *testing.T) {
 			assert.Nil(character.FormerWorlds)
 			assert.Equal("Thais", character.Residence)
 			assert.Equal("Mighty troll", character.MarriedTo)
+			marriedTo[i] = character.MarriedTo
 			assert.Nil(character.Houses)
 			assert.Equal("Elysium", character.Guild.GuildName)
 			assert.Equal("Follower", character.Guild.Rank)
@@ -290,6 +292,9 @@ func TestCharacterTrollefar(t *testing.T) {
 			assert.Equal(tc.expectedFirst, information.TibiaURLs[0])
 		})
 	}
+
+	// HTML uses a non-breaking space; JSON uses a regular space.
+	assert.Equal(t, marriedTo[0], marriedTo[1])
 }
 
 func TestCharacterMightyTroll(t *testing.T) {
