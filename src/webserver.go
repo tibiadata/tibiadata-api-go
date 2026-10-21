@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	_ "github.com/mantyr/go-charset/data"
@@ -243,7 +244,7 @@ func runWebServer() {
 
 	// Prepare for a graceful shutdown
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	// Run a go routine that will receive the shutdown input
 	go func() {
