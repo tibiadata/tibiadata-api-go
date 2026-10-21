@@ -48,26 +48,43 @@ func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, e
 		return noopShutdown, err
 	}
 
+	var shutdowns []func(context.Context) error
+	shutdown := func(ctx context.Context) error {
+		var errs []error
+		for _, s := range shutdowns {
+			errs = append(errs, s(ctx))
+		}
+		return errors.Join(errs...)
+	}
+
+	// Signals whose exporter is "none" keep the global no-op provider, so no
+	// spans or measurements are created only to be discarded.
 	spanExporter, err := autoexport.NewSpanExporter(ctx)
 	if err != nil {
 		return noopShutdown, err
 	}
-	tracerProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(spanExporter),
-		sdktrace.WithResource(res),
-	)
+	if !autoexport.IsNoneSpanExporter(spanExporter) {
+		tracerProvider := sdktrace.NewTracerProvider(
+			sdktrace.WithBatcher(spanExporter),
+			sdktrace.WithResource(res),
+		)
+		otel.SetTracerProvider(tracerProvider)
+		shutdowns = append(shutdowns, tracerProvider.Shutdown)
+	}
 
 	metricReader, err := autoexport.NewMetricReader(ctx)
 	if err != nil {
-		return noopShutdown, errors.Join(err, tracerProvider.Shutdown(ctx))
+		return noopShutdown, errors.Join(err, shutdown(ctx))
 	}
-	meterProvider := sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(metricReader),
-		sdkmetric.WithResource(res),
-	)
+	if !autoexport.IsNoneMetricReader(metricReader) {
+		meterProvider := sdkmetric.NewMeterProvider(
+			sdkmetric.WithReader(metricReader),
+			sdkmetric.WithResource(res),
+		)
+		otel.SetMeterProvider(meterProvider)
+		shutdowns = append(shutdowns, meterProvider.Shutdown)
+	}
 
-	otel.SetTracerProvider(tracerProvider)
-	otel.SetMeterProvider(meterProvider)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
@@ -82,9 +99,7 @@ func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, e
 		"metrics_exporter", envOrDefault("OTEL_METRICS_EXPORTER", "otlp"),
 	)
 
-	return func(ctx context.Context) error {
-		return errors.Join(tracerProvider.Shutdown(ctx), meterProvider.Shutdown(ctx))
-	}, nil
+	return shutdown, nil
 }
 
 func tibiaDataTelemetryResource(ctx context.Context) (*resource.Resource, error) {

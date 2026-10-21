@@ -86,24 +86,37 @@ func TestInitTibiaDataTelemetryDisabledByDefault(t *testing.T) {
 }
 
 func TestInitTibiaDataTelemetryEnabled(t *testing.T) {
-	t.Setenv(telemetryEnabledEnv, "true")
-	t.Setenv("OTEL_TRACES_EXPORTER", "none")
-	t.Setenv("OTEL_METRICS_EXPORTER", "none")
-	prevTP, prevMP, prevProp := otel.GetTracerProvider(), otel.GetMeterProvider(), otel.GetTextMapPropagator()
-	t.Cleanup(func() {
-		otel.SetTracerProvider(prevTP)
-		otel.SetMeterProvider(prevMP)
-		otel.SetTextMapPropagator(prevProp)
-		tibiaDataTelemetryEnabled = false
-	})
+	for _, test := range []struct {
+		traces, metrics         string
+		wantTraces, wantMetrics bool
+	}{
+		{"console", "none", true, false},
+		{"none", "console", false, true},
+	} {
+		t.Run(test.traces+"/"+test.metrics, func(t *testing.T) {
+			t.Setenv(telemetryEnabledEnv, "true")
+			t.Setenv("OTEL_TRACES_EXPORTER", test.traces)
+			t.Setenv("OTEL_METRICS_EXPORTER", test.metrics)
+			t.Setenv("OTEL_METRIC_EXPORT_INTERVAL", "3600000")
+			prevTP, prevMP, prevProp := otel.GetTracerProvider(), otel.GetMeterProvider(), otel.GetTextMapPropagator()
+			t.Cleanup(func() {
+				otel.SetTracerProvider(prevTP)
+				otel.SetMeterProvider(prevMP)
+				otel.SetTextMapPropagator(prevProp)
+				tibiaDataTelemetryEnabled = false
+			})
 
-	shutdown, err := initTibiaDataTelemetry(context.Background())
+			shutdown, err := initTibiaDataTelemetry(context.Background())
 
-	require.NoError(t, err)
-	assert.True(t, tibiaDataTelemetryEnabled)
-	_, isSDK := otel.GetTracerProvider().(*sdktrace.TracerProvider)
-	assert.True(t, isSDK)
-	assert.NoError(t, shutdown(context.Background()))
+			require.NoError(t, err)
+			assert.True(t, tibiaDataTelemetryEnabled)
+			_, tracesSDK := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+			assert.Equal(t, test.wantTraces, tracesSDK)
+			_, metricsSDK := otel.GetMeterProvider().(*sdkmetric.MeterProvider)
+			assert.Equal(t, test.wantMetrics, metricsSDK)
+			assert.NoError(t, shutdown(context.Background()))
+		})
+	}
 }
 
 func TestTibiaDataTelemetryResourceDefaults(t *testing.T) {
