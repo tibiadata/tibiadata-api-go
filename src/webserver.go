@@ -130,7 +130,6 @@ type TibiaDataRequestStruct struct {
 	UseFansiteAPI bool              `json:"use_fansite_api"` // If true, fetch data from Fansite API JSON endpoint
 	CacheMaxAge   time.Duration     `json:"-"`
 	UserAgent     string            `json:"-"` // User-Agent for the request (falls back to client default when empty)
-	Ctx           context.Context   `json:"-"` // Context of the incoming request, used for cancellation and trace propagation
 }
 
 // tibiaDataRequestContext returns the context of the incoming request, or
@@ -1348,13 +1347,10 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 	if tibiaDataRequest.UserAgent == "" {
 		tibiaDataRequest.UserAgent = tibiaDataUserAgentForRequest(c)
 	}
-	if tibiaDataRequest.Ctx == nil {
-		tibiaDataRequest.Ctx = tibiaDataRequestContext(c)
-	}
 	if tibiaDataRequest.UseFansiteAPI {
-		boxContent, err = TibiaDataJSONDataCollector(tibiaDataRequest)
+		boxContent, err = TibiaDataJSONDataCollector(tibiaDataRequestContext(c), tibiaDataRequest)
 	} else {
-		boxContent, err = TibiaDataHTMLDataCollector(tibiaDataRequest)
+		boxContent, err = TibiaDataHTMLDataCollector(tibiaDataRequestContext(c), tibiaDataRequest)
 	}
 
 	// return error (e.g. for maintenance mode)
@@ -1377,16 +1373,13 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 	TibiaDataAPIHandleResponse(c, handlerName, jsonData)
 }
 
-func TibiaDataJSONDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string, error) {
+func TibiaDataJSONDataCollector(ctx context.Context, TibiaDataRequest TibiaDataRequestStruct) (string, error) {
 	if TibiaFansiteToken == "" {
 		return "", errors.New("missing TibiaFansiteToken for fansiteapi.tibia.com request")
 	}
 
-	req := tibiaDataClient.R().
+	req := tibiaDataClient.R().SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+TibiaFansiteToken)
-	if TibiaDataRequest.Ctx != nil {
-		req.SetContext(TibiaDataRequest.Ctx)
-	}
 	if TibiaDataRequest.UserAgent != "" {
 		req.SetHeader(userAgentHeader, TibiaDataRequest.UserAgent)
 	}
@@ -1537,7 +1530,7 @@ func TibiaDataUserAgentGenerator(version int) string {
 }
 
 // TibiaDataHTMLDataCollector func
-func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string, error) {
+func TibiaDataHTMLDataCollector(ctx context.Context, TibiaDataRequest TibiaDataRequestStruct) (string, error) {
 	// Replace domain with proxy if env TIBIADATA_PROXY set
 	if TibiaDataProxyDomain != "" {
 		TibiaDataRequest.URL = strings.ReplaceAll(TibiaDataRequest.URL, "https://www.tibia.com/", TibiaDataProxyDomain)
@@ -1550,10 +1543,7 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 		LogMessage string
 	)
 
-	req := tibiaDataClient.R()
-	if TibiaDataRequest.Ctx != nil {
-		req.SetContext(TibiaDataRequest.Ctx)
-	}
+	req := tibiaDataClient.R().SetContext(ctx)
 	if TibiaDataRequest.UserAgent != "" {
 		req.SetHeader(userAgentHeader, TibiaDataRequest.UserAgent)
 	}

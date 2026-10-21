@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,8 +32,12 @@ func TestTibiaHousesOverviewUserAgent(t *testing.T) {
 		t.Run(fmt.Sprintf("v%d", version), func(t *testing.T) {
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 			c.Request = httptest.NewRequest(http.MethodGet, fmt.Sprintf("/v%d/houses/Antica/Thais", version), nil)
+			ctx, cancel := context.WithCancel(c.Request.Context())
+			defer cancel()
+			c.Request = c.Request.WithContext(ctx)
 			var urls []string
-			_, err := TibiaHousesOverviewImpl(c, "Antica", "Thais", func(request TibiaDataRequestStruct) (string, error) {
+			_, err := TibiaHousesOverviewImpl(c, "Antica", "Thais", func(ctx context.Context, request TibiaDataRequestStruct) (string, error) {
+				assert.Equal(t, c.Request.Context(), ctx)
 				assert.Equal(t, TibiaDataUserAgentGenerator(version), request.UserAgent)
 				urls = append(urls, request.URL)
 				if strings.Contains(request.URL, "guildhalls") {
@@ -76,7 +81,7 @@ func TestAnticaThaisHousesOverview(t *testing.T) {
 		nil,
 		"Antica",
 		"Thais",
-		func(request TibiaDataRequestStruct) (string, error) {
+		func(_ context.Context, request TibiaDataRequestStruct) (string, error) {
 			if strings.Contains(request.URL, "guildhalls") {
 				return string(guildData), nil
 			}
@@ -165,7 +170,7 @@ func TestPremiaFarmineHousesOverview(t *testing.T) {
 		nil,
 		"Premia",
 		"Farmine",
-		func(request TibiaDataRequestStruct) (string, error) {
+		func(_ context.Context, request TibiaDataRequestStruct) (string, error) {
 			if strings.Contains(request.URL, "guildhalls") {
 				return string(guildData), nil
 			}
@@ -222,7 +227,7 @@ func TestPremiaEdronHousesOverview(t *testing.T) {
 		nil,
 		"Premia",
 		"Edron",
-		func(request TibiaDataRequestStruct) (string, error) {
+		func(_ context.Context, request TibiaDataRequestStruct) (string, error) {
 			if strings.Contains(request.URL, "guildhalls") {
 				return string(guildData), nil
 			}

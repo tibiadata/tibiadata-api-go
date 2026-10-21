@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -439,7 +440,7 @@ func TestTibiaDataJSONDataCollector(t *testing.T) {
 		assert := assert.New(t)
 		TibiaFansiteToken = ""
 
-		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: "https://example.invalid"})
+		body, err := TibiaDataJSONDataCollector(context.Background(), TibiaDataRequestStruct{URL: "https://example.invalid"})
 		assert.Empty(body)
 		if assert.Error(err) {
 			assert.Contains(err.Error(), "missing TibiaFansiteToken")
@@ -459,7 +460,7 @@ func TestTibiaDataJSONDataCollector(t *testing.T) {
 		defer server.Close()
 
 		TibiaFansiteToken = "test-token"
-		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		body, err := TibiaDataJSONDataCollector(context.Background(), TibiaDataRequestStruct{URL: server.URL})
 		assert.NoError(err)
 		assert.Equal(`{"characterGameInformation":{"characterName":"Test"}}`, body)
 		assert.Equal("Bearer test-token", gotAuth)
@@ -474,7 +475,7 @@ func TestTibiaDataJSONDataCollector(t *testing.T) {
 		defer server.Close()
 
 		TibiaFansiteToken = "test-token"
-		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		body, err := TibiaDataJSONDataCollector(context.Background(), TibiaDataRequestStruct{URL: server.URL})
 		assert.Empty(body)
 		assert.ErrorIs(err, validation.ErrStatusForbidden)
 	})
@@ -488,7 +489,7 @@ func TestTibiaDataJSONDataCollector(t *testing.T) {
 		defer server.Close()
 
 		TibiaFansiteToken = "test-token"
-		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		body, err := TibiaDataJSONDataCollector(context.Background(), TibiaDataRequestStruct{URL: server.URL})
 		assert.Empty(body)
 		assert.ErrorIs(err, validation.ErrorCharacterNotFound)
 	})
@@ -502,7 +503,7 @@ func TestTibiaDataJSONDataCollector(t *testing.T) {
 		defer server.Close()
 
 		TibiaFansiteToken = "test-token"
-		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: server.URL})
+		body, err := TibiaDataJSONDataCollector(context.Background(), TibiaDataRequestStruct{URL: server.URL})
 		assert.Empty(body)
 		assert.ErrorIs(err, validation.ErrStatusUnknown)
 	})
@@ -511,7 +512,7 @@ func TestTibiaDataJSONDataCollector(t *testing.T) {
 		assert := assert.New(t)
 
 		TibiaFansiteToken = "test-token"
-		body, err := TibiaDataJSONDataCollector(TibiaDataRequestStruct{URL: "http://127.0.0.1:0"})
+		body, err := TibiaDataJSONDataCollector(context.Background(), TibiaDataRequestStruct{URL: "http://127.0.0.1:0"})
 		assert.Empty(body)
 		assert.Error(err)
 	})
@@ -561,7 +562,7 @@ func TestTibiaDataHTMLDataCollectorReturnsBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	body, err := TibiaDataHTMLDataCollector(TibiaDataRequestStruct{
+	body, err := TibiaDataHTMLDataCollector(context.Background(), TibiaDataRequestStruct{
 		Method:  http.MethodGet,
 		URL:     server.URL,
 		RawBody: true,
@@ -982,7 +983,7 @@ func TestTibiaDataCollectorsUserAgent(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		method    string
-		collector func(TibiaDataRequestStruct) (string, error)
+		collector func(context.Context, TibiaDataRequestStruct) (string, error)
 	}{
 		{"HTML GET", http.MethodGet, TibiaDataHTMLDataCollector},
 		{"HTML POST", http.MethodPost, TibiaDataHTMLDataCollector},
@@ -997,7 +998,7 @@ func TestTibiaDataCollectorsUserAgent(t *testing.T) {
 			defer server.Close()
 
 			for _, userAgent := range []string{TibiaDataUserAgentGenerator(5), TibiaDataUserAgentGenerator(4), ""} {
-				body, err := test.collector(TibiaDataRequestStruct{
+				body, err := test.collector(context.Background(), TibiaDataRequestStruct{
 					URL: server.URL, Method: test.method, RawBody: true, UserAgent: userAgent,
 				})
 				if !assert.NoError(t, err) {
@@ -1012,6 +1013,36 @@ func TestTibiaDataCollectorsUserAgent(t *testing.T) {
 				}
 				assert.Equal(t, expected, request.UserAgent())
 			}
+		})
+	}
+}
+
+func TestTibiaDataCollectorsRespectContextCancellation(t *testing.T) {
+	previousClient, previousToken := tibiaDataClient, TibiaFansiteToken
+	t.Cleanup(func() {
+		tibiaDataClient, TibiaFansiteToken = previousClient, previousToken
+	})
+	TibiaFansiteToken = "test-token"
+	initTibiaDataClient()
+	tibiaDataClient.SetRetryCount(0)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("cancelled request reached upstream")
+	}))
+	defer server.Close()
+
+	for _, test := range []struct {
+		name      string
+		collector func(context.Context, TibiaDataRequestStruct) (string, error)
+	}{
+		{"HTML", TibiaDataHTMLDataCollector},
+		{"JSON", TibiaDataJSONDataCollector},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			_, err := test.collector(ctx, TibiaDataRequestStruct{URL: server.URL, RawBody: true})
+			assert.ErrorIs(t, err, context.Canceled)
 		})
 	}
 }

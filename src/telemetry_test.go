@@ -183,11 +183,10 @@ func TestTibiaDataHTMLDataCollectorPropagatesTraceContext(t *testing.T) {
 	defer server.Close()
 
 	ctx, parent := otel.Tracer("test").Start(context.Background(), "parent")
-	_, err := TibiaDataHTMLDataCollector(TibiaDataRequestStruct{
+	_, err := TibiaDataHTMLDataCollector(ctx, TibiaDataRequestStruct{
 		Method:  http.MethodGet,
 		URL:     server.URL,
 		RawBody: true,
-		Ctx:     ctx,
 	})
 	parent.End()
 	require.NoError(t, err)

@@ -50,7 +50,7 @@ var (
 )
 
 // TibiaHousesOverview func
-func TibiaHousesOverviewImpl(c *gin.Context, world, town string, htmlDataCollector func(TibiaDataRequestStruct) (string, error)) (HousesOverviewResponse, error) {
+func TibiaHousesOverviewImpl(c *gin.Context, world, town string, htmlDataCollector func(context.Context, TibiaDataRequestStruct) (string, error)) (HousesOverviewResponse, error) {
 	// Creating empty vars
 	var HouseData, GuildhallData []HousesHouse
 	var TibiaHouseURLs []string
@@ -94,7 +94,7 @@ func TibiaHousesOverviewImpl(c *gin.Context, world, town string, htmlDataCollect
 	}, nil
 }
 
-func makeHouseRequest(ctx context.Context, HouseType, world, town, userAgent string, htmlDataCollector func(TibiaDataRequestStruct) (string, error)) ([]HousesHouse, string, error) {
+func makeHouseRequest(ctx context.Context, HouseType, world, town, userAgent string, htmlDataCollector func(context.Context, TibiaDataRequestStruct) (string, error)) ([]HousesHouse, string, error) {
 	// Creating an empty var
 	var output []HousesHouse
 
@@ -102,10 +102,9 @@ func makeHouseRequest(ctx context.Context, HouseType, world, town, userAgent str
 		Method:    resty.MethodGet,
 		URL:       "https://www.tibia.com/community/?subtopic=houses&world=" + TibiaDataQueryEscapeString(world) + "&town=" + TibiaDataQueryEscapeString(town) + "&type=" + TibiaDataQueryEscapeString(HouseType),
 		UserAgent: userAgent,
-		Ctx:       ctx,
 	}
 
-	BoxContentHTML, err := htmlDataCollector(tibiadataRequest)
+	BoxContentHTML, err := htmlDataCollector(ctx, tibiadataRequest)
 	// return error (e.g. for maintenance mode)
 	if err != nil {
 		return nil, "", err
