@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestParseTibiaDataLogLevel(t *testing.T) {
@@ -148,6 +149,21 @@ func configureCloudflareRayLoggingForTest(t *testing.T, enabled bool) {
 
 func TestTraceLogAttrsEmptyWithoutTracing(t *testing.T) {
 	assert.Empty(t, traceLogAttrs(context.Background()))
+}
+
+func TestTraceLogAttrsFromSpanContext(t *testing.T) {
+	traceID, _ := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
+	spanID, _ := trace.SpanIDFromHex("0123456789abcdef")
+	ctx := trace.ContextWithSpanContext(context.Background(), trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+	}))
+
+	assert.Equal(t, []any{
+		"trace_id", "0123456789abcdef0123456789abcdef",
+		"span_id", "0123456789abcdef",
+	}, traceLogAttrs(ctx))
 }
 
 func captureLogs(t *testing.T, level slog.Level) *bytes.Buffer {

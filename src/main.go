@@ -75,6 +75,7 @@ func init() {
 	slog.Info("TibiaData API debug-mode", "enabled", TibiaDataDebug)
 
 	TibiaDataInitializer()
+	setupTibiaDataTelemetry()
 
 	TibiaDataUserAgent = TibiaDataUserAgentGenerator(TibiaDataAPIversion)
 	tibiaDataInitUserAgents()

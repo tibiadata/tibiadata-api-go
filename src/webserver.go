@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	_ "github.com/mantyr/go-charset/data"
@@ -25,6 +26,7 @@ import (
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var (
@@ -79,6 +81,12 @@ func initTibiaDataClient() {
 
 	// Disable redirection of client (so we skip parsing maintenance page)
 	tibiaDataClient.SetRedirectPolicy(resty.NoRedirectPolicy())
+
+	// Trace outbound requests and propagate trace context when telemetry is enabled
+	if tibiaDataTelemetryActive() {
+		httpClient := tibiaDataClient.GetClient()
+		httpClient.Transport = otelhttp.NewTransport(httpClient.Transport)
+	}
 }
 
 // DebugOutInformation wraps OutInformation with some debug info
@@ -125,6 +133,19 @@ type TibiaDataRequestStruct struct {
 	UserAgent     string            `json:"-"` // User-Agent for the request (falls back to client default when empty)
 }
 
+// tibiaDataRequestContext returns the context of the incoming request, or
+// context.Background() when unavailable.
+func tibiaDataRequestContext(c *gin.Context) context.Context {
+	if c == nil || c.Request == nil {
+		return context.Background()
+	}
+	return c.Request.Context()
+}
+
+// serverShutdownTimeout bounds how long in-flight requests may take to finish
+// after a shutdown signal. It stays below Kubernetes' default 30s grace period.
+const serverShutdownTimeout = 20 * time.Second
+
 // RunWebServer starts the gin server
 // It blocks the code and will only finish execution on shutdown
 func runWebServer() {
@@ -141,6 +162,9 @@ func runWebServer() {
 	slog.Info("TibiaData API gin-mode", "mode", gin.Mode())
 
 	router := gin.New()
+	if tibiaDataTelemetryActive() {
+		router.Use(ginTelemetryMiddleware())
+	}
 	router.Use(ginAccessLogMiddleware())
 	router.Use(ginRecoveryMiddleware())
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -226,16 +250,24 @@ func runWebServer() {
 
 	// Prepare for a graceful shutdown
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	// Run a go routine that will receive the shutdown input
+	// Run a go routine that will receive the shutdown input and drain
+	// in-flight requests before the server returns
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-quit
 		slog.Info("TibiaData API received shutdown input")
-		if err := server.Close(); err != nil {
-			tibiaDataLogFatal("TibiaData API server close error", err)
+		isReady.Store(false)
+		ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			slog.Warn("TibiaData API graceful shutdown timed out, closing connections", "error", err)
+			_ = server.Close()
 		}
 	}()
+	defer shutdownTibiaDataTelemetry()
 
 	// setting readyz endpoint to true
 	isReady.Store(true)
@@ -244,6 +276,7 @@ func runWebServer() {
 
 	if err := server.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
+			<-shutdownDone
 			slog.Info("TibiaData API server gracefully shut down")
 		} else {
 			tibiaDataLogFatal("TibiaData API server closed unexpectedly", err)
@@ -1330,9 +1363,9 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 		tibiaDataRequest.UserAgent = tibiaDataUserAgentForRequest(c)
 	}
 	if tibiaDataRequest.UseFansiteAPI {
-		boxContent, err = TibiaDataJSONDataCollector(tibiaDataRequest)
+		boxContent, err = TibiaDataJSONDataCollector(tibiaDataRequestContext(c), tibiaDataRequest)
 	} else {
-		boxContent, err = TibiaDataHTMLDataCollector(tibiaDataRequest)
+		boxContent, err = TibiaDataHTMLDataCollector(tibiaDataRequestContext(c), tibiaDataRequest)
 	}
 
 	// return error (e.g. for maintenance mode)
@@ -1355,12 +1388,12 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 	TibiaDataAPIHandleResponse(c, handlerName, jsonData)
 }
 
-func TibiaDataJSONDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string, error) {
+func TibiaDataJSONDataCollector(ctx context.Context, TibiaDataRequest TibiaDataRequestStruct) (string, error) {
 	if TibiaFansiteToken == "" {
 		return "", errors.New("missing TibiaFansiteToken for fansiteapi.tibia.com request")
 	}
 
-	req := tibiaDataClient.R().
+	req := tibiaDataClient.R().SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+TibiaFansiteToken)
 	if TibiaDataRequest.UserAgent != "" {
 		req.SetHeader(userAgentHeader, TibiaDataRequest.UserAgent)
@@ -1512,7 +1545,7 @@ func TibiaDataUserAgentGenerator(version int) string {
 }
 
 // TibiaDataHTMLDataCollector func
-func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string, error) {
+func TibiaDataHTMLDataCollector(ctx context.Context, TibiaDataRequest TibiaDataRequestStruct) (string, error) {
 	// Replace domain with proxy if env TIBIADATA_PROXY set
 	if TibiaDataProxyDomain != "" {
 		TibiaDataRequest.URL = strings.ReplaceAll(TibiaDataRequest.URL, "https://www.tibia.com/", TibiaDataProxyDomain)
@@ -1525,7 +1558,7 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 		LogMessage string
 	)
 
-	req := tibiaDataClient.R()
+	req := tibiaDataClient.R().SetContext(ctx)
 	if TibiaDataRequest.UserAgent != "" {
 		req.SetHeader(userAgentHeader, TibiaDataRequest.UserAgent)
 	}
