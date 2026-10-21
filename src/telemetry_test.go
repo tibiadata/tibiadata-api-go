@@ -30,18 +30,18 @@ func setupTestTelemetry(t *testing.T) (*tracetest.SpanRecorder, *sdkmetric.Manua
 	meterProvider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
 
 	prevTP, prevMP, prevProp := otel.GetTracerProvider(), otel.GetMeterProvider(), otel.GetTextMapPropagator()
-	prevEnabled := tibiaDataTelemetryEnabled
+	prevEnabled, prevTracing, prevMetrics := tibiaDataTelemetryEnabled, tibiaDataTracingEnabled, tibiaDataMetricsEnabled
 
 	otel.SetTracerProvider(tracerProvider)
 	otel.SetMeterProvider(meterProvider)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
-	tibiaDataTelemetryEnabled = true
+	tibiaDataTelemetryEnabled, tibiaDataTracingEnabled, tibiaDataMetricsEnabled = true, true, true
 
 	t.Cleanup(func() {
 		otel.SetTracerProvider(prevTP)
 		otel.SetMeterProvider(prevMP)
 		otel.SetTextMapPropagator(prevProp)
-		tibiaDataTelemetryEnabled = prevEnabled
+		tibiaDataTelemetryEnabled, tibiaDataTracingEnabled, tibiaDataMetricsEnabled = prevEnabled, prevTracing, prevMetrics
 		_ = tracerProvider.Shutdown(context.Background())
 		_ = meterProvider.Shutdown(context.Background())
 	})
@@ -103,13 +103,15 @@ func TestInitTibiaDataTelemetryEnabled(t *testing.T) {
 				otel.SetTracerProvider(prevTP)
 				otel.SetMeterProvider(prevMP)
 				otel.SetTextMapPropagator(prevProp)
-				tibiaDataTelemetryEnabled = false
+				tibiaDataTelemetryEnabled, tibiaDataTracingEnabled, tibiaDataMetricsEnabled = false, false, false
 			})
 
 			shutdown, err := initTibiaDataTelemetry(context.Background())
 
 			require.NoError(t, err)
 			assert.True(t, tibiaDataTelemetryEnabled)
+			assert.Equal(t, test.wantTraces, tibiaDataTracingEnabled)
+			assert.Equal(t, test.wantMetrics, tibiaDataMetricsEnabled)
 			_, tracesSDK := otel.GetTracerProvider().(*sdktrace.TracerProvider)
 			assert.Equal(t, test.wantTraces, tracesSDK)
 			_, metricsSDK := otel.GetMeterProvider().(*sdkmetric.MeterProvider)
@@ -214,4 +216,23 @@ func TestTibiaDataHTMLDataCollectorPropagatesTraceContext(t *testing.T) {
 	assert.Equal(t, parent.SpanContext().SpanID(), client.Parent().SpanID())
 	assert.Contains(t, traceparent, parent.SpanContext().TraceID().String())
 	assert.Contains(t, traceparent, client.SpanContext().SpanID().String())
+}
+
+func TestTibiaDataTelemetryActive(t *testing.T) {
+	prevEnabled, prevTracing, prevMetrics := tibiaDataTelemetryEnabled, tibiaDataTracingEnabled, tibiaDataMetricsEnabled
+	t.Cleanup(func() {
+		tibiaDataTelemetryEnabled, tibiaDataTracingEnabled, tibiaDataMetricsEnabled = prevEnabled, prevTracing, prevMetrics
+	})
+
+	for _, tc := range []struct {
+		enabled, tracing, metrics, want bool
+	}{
+		{false, true, true, false},
+		{true, false, false, false},
+		{true, false, true, true},
+		{true, true, false, true},
+	} {
+		tibiaDataTelemetryEnabled, tibiaDataTracingEnabled, tibiaDataMetricsEnabled = tc.enabled, tc.tracing, tc.metrics
+		assert.Equal(t, tc.want, tibiaDataTelemetryActive(), "%+v", tc)
+	}
 }

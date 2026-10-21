@@ -28,6 +28,8 @@ const (
 
 var (
 	tibiaDataTelemetryEnabled bool
+	tibiaDataTracingEnabled   bool
+	tibiaDataMetricsEnabled   bool
 	tibiaDataTelemetryStop    = func(context.Context) error { return nil }
 )
 
@@ -38,6 +40,7 @@ func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, e
 	noopShutdown := func(context.Context) error { return nil }
 
 	tibiaDataTelemetryEnabled = getEnvAsBool(telemetryEnabledEnv, false)
+	tibiaDataTracingEnabled, tibiaDataMetricsEnabled = false, false
 	if !tibiaDataTelemetryEnabled {
 		slog.Info("TibiaData API opentelemetry", "enabled", false)
 		return noopShutdown, nil
@@ -69,6 +72,7 @@ func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, e
 			sdktrace.WithResource(res),
 		)
 		otel.SetTracerProvider(tracerProvider)
+		tibiaDataTracingEnabled = true
 		shutdowns = append(shutdowns, tracerProvider.Shutdown)
 	}
 
@@ -82,6 +86,7 @@ func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, e
 			sdkmetric.WithResource(res),
 		)
 		otel.SetMeterProvider(meterProvider)
+		tibiaDataMetricsEnabled = true
 		shutdowns = append(shutdowns, meterProvider.Shutdown)
 	}
 
@@ -127,6 +132,12 @@ func envOrDefault(key, fallback string) string {
 
 type skipTraceKey struct{}
 
+// tibiaDataTelemetryActive reports whether at least one telemetry signal is
+// exported, i.e. whether request instrumentation should be installed.
+func tibiaDataTelemetryActive() bool {
+	return tibiaDataTelemetryEnabled && (tibiaDataTracingEnabled || tibiaDataMetricsEnabled)
+}
+
 // ginTelemetryMiddleware instruments requests with spans and HTTP server
 // metrics. Probe endpoints are recorded in metrics but not traced.
 func ginTelemetryMiddleware() gin.HandlerFunc {
@@ -134,6 +145,9 @@ func ginTelemetryMiddleware() gin.HandlerFunc {
 		telemetryService,
 		otelgin.WithTracerProvider(probeFilteringTracerProvider{otel.GetTracerProvider()}),
 	)
+	if !tibiaDataTracingEnabled {
+		return otelMiddleware
+	}
 	return func(c *gin.Context) {
 		if isProbePath(c.Request.URL.Path) {
 			c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), skipTraceKey{}, true))

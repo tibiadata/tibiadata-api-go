@@ -83,7 +83,7 @@ func initTibiaDataClient() {
 	tibiaDataClient.SetRedirectPolicy(resty.NoRedirectPolicy())
 
 	// Trace outbound requests and propagate trace context when telemetry is enabled
-	if tibiaDataTelemetryEnabled {
+	if tibiaDataTelemetryActive() {
 		httpClient := tibiaDataClient.GetClient()
 		httpClient.Transport = otelhttp.NewTransport(httpClient.Transport)
 	}
@@ -142,6 +142,10 @@ func tibiaDataRequestContext(c *gin.Context) context.Context {
 	return c.Request.Context()
 }
 
+// serverShutdownTimeout bounds how long in-flight requests may take to finish
+// after a shutdown signal. It stays below Kubernetes' default 30s grace period.
+const serverShutdownTimeout = 20 * time.Second
+
 // RunWebServer starts the gin server
 // It blocks the code and will only finish execution on shutdown
 func runWebServer() {
@@ -158,7 +162,9 @@ func runWebServer() {
 	slog.Info("TibiaData API gin-mode", "mode", gin.Mode())
 
 	router := gin.New()
-	router.Use(ginTelemetryMiddleware())
+	if tibiaDataTelemetryActive() {
+		router.Use(ginTelemetryMiddleware())
+	}
 	router.Use(ginAccessLogMiddleware())
 	router.Use(ginRecoveryMiddleware())
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -246,12 +252,19 @@ func runWebServer() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	// Run a go routine that will receive the shutdown input
+	// Run a go routine that will receive the shutdown input and drain
+	// in-flight requests before the server returns
+	shutdownDone := make(chan struct{})
 	go func() {
+		defer close(shutdownDone)
 		<-quit
 		slog.Info("TibiaData API received shutdown input")
-		if err := server.Close(); err != nil {
-			tibiaDataLogFatal("TibiaData API server close error", err)
+		isReady.Store(false)
+		ctx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			slog.Warn("TibiaData API graceful shutdown timed out, closing connections", "error", err)
+			_ = server.Close()
 		}
 	}()
 	defer shutdownTibiaDataTelemetry()
@@ -263,6 +276,7 @@ func runWebServer() {
 
 	if err := server.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
+			<-shutdownDone
 			slog.Info("TibiaData API server gracefully shut down")
 		} else {
 			tibiaDataLogFatal("TibiaData API server closed unexpectedly", err)

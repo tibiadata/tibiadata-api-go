@@ -162,7 +162,7 @@ All other settings use the standard [OpenTelemetry environment variables](https:
 | `OTEL_TRACES_SAMPLER` | `parentbased_always_on` | Trace sampler, e.g. `parentbased_traceidratio` together with `OTEL_TRACES_SAMPLER_ARG=0.1`. |
 | `OTEL_EXPORTER_PROMETHEUS_HOST` / `OTEL_EXPORTER_PROMETHEUS_PORT` | `localhost` / `9464` | Listen address of the Prometheus `/metrics` endpoint when `OTEL_METRICS_EXPORTER=prometheus`. Set the host to `0.0.0.0` to expose it outside the container. |
 
-A signal whose exporter is set to `none` is fully disabled, so it adds no per-request work. For example, to collect only metrics:
+A signal whose exporter is set to `none` creates no spans or measurements. When telemetry is disabled, or both exporters are `none`, no instrumentation is installed at all. For example, to collect only metrics:
 
 ```bash
 TIBIADATA_OTEL_ENABLED=true
