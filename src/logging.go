@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -80,8 +81,11 @@ func newTibiaDataLogHandler(w io.Writer, format string, level slog.Leveler) slog
 }
 
 func traceLogAttrs(ctx context.Context) []any {
-	_ = ctx
-	return nil // extended when OpenTelemetry tracing (#749) is wired
+	sc := trace.SpanContextFromContext(ctx)
+	if !sc.IsValid() {
+		return nil
+	}
+	return []any{"trace_id", sc.TraceID().String(), "span_id", sc.SpanID().String()}
 }
 
 func requestLogAttrs(r *http.Request) []any {
@@ -151,6 +155,7 @@ func ginRecoveryMiddleware() gin.HandlerFunc {
 			"path", c.Request.URL.Path,
 			"stack", string(debug.Stack()),
 		}
+		attrs = append(attrs, traceLogAttrs(c.Request.Context())...)
 		attrs = append(attrs, requestLogAttrs(c.Request)...)
 		slog.Error("panic recovered", attrs...)
 		c.AbortWithStatus(http.StatusInternalServerError)

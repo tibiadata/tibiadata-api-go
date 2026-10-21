@@ -25,6 +25,7 @@ import (
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var (
@@ -79,6 +80,12 @@ func initTibiaDataClient() {
 
 	// Disable redirection of client (so we skip parsing maintenance page)
 	tibiaDataClient.SetRedirectPolicy(resty.NoRedirectPolicy())
+
+	// Trace outbound requests and propagate trace context when telemetry is enabled
+	if tibiaDataTelemetryEnabled {
+		httpClient := tibiaDataClient.GetClient()
+		httpClient.Transport = otelhttp.NewTransport(httpClient.Transport)
+	}
 }
 
 // DebugOutInformation wraps OutInformation with some debug info
@@ -123,6 +130,16 @@ type TibiaDataRequestStruct struct {
 	UseFansiteAPI bool              `json:"use_fansite_api"` // If true, fetch data from Fansite API JSON endpoint
 	CacheMaxAge   time.Duration     `json:"-"`
 	UserAgent     string            `json:"-"` // User-Agent for the request (falls back to client default when empty)
+	Ctx           context.Context   `json:"-"` // Context of the incoming request, used for cancellation and trace propagation
+}
+
+// tibiaDataRequestContext returns the context of the incoming request, or
+// context.Background() when unavailable.
+func tibiaDataRequestContext(c *gin.Context) context.Context {
+	if c == nil || c.Request == nil {
+		return context.Background()
+	}
+	return c.Request.Context()
 }
 
 // RunWebServer starts the gin server
@@ -141,6 +158,7 @@ func runWebServer() {
 	slog.Info("TibiaData API gin-mode", "mode", gin.Mode())
 
 	router := gin.New()
+	router.Use(ginTelemetryMiddleware())
 	router.Use(ginAccessLogMiddleware())
 	router.Use(ginRecoveryMiddleware())
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
@@ -236,6 +254,7 @@ func runWebServer() {
 			tibiaDataLogFatal("TibiaData API server close error", err)
 		}
 	}()
+	defer shutdownTibiaDataTelemetry()
 
 	// setting readyz endpoint to true
 	isReady.Store(true)
@@ -1329,6 +1348,9 @@ func tibiaDataRequestHandler(c *gin.Context, tibiaDataRequest TibiaDataRequestSt
 	if tibiaDataRequest.UserAgent == "" {
 		tibiaDataRequest.UserAgent = tibiaDataUserAgentForRequest(c)
 	}
+	if tibiaDataRequest.Ctx == nil {
+		tibiaDataRequest.Ctx = tibiaDataRequestContext(c)
+	}
 	if tibiaDataRequest.UseFansiteAPI {
 		boxContent, err = TibiaDataJSONDataCollector(tibiaDataRequest)
 	} else {
@@ -1362,6 +1384,9 @@ func TibiaDataJSONDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 
 	req := tibiaDataClient.R().
 		SetHeader("Authorization", "Bearer "+TibiaFansiteToken)
+	if TibiaDataRequest.Ctx != nil {
+		req.SetContext(TibiaDataRequest.Ctx)
+	}
 	if TibiaDataRequest.UserAgent != "" {
 		req.SetHeader(userAgentHeader, TibiaDataRequest.UserAgent)
 	}
@@ -1526,6 +1551,9 @@ func TibiaDataHTMLDataCollector(TibiaDataRequest TibiaDataRequestStruct) (string
 	)
 
 	req := tibiaDataClient.R()
+	if TibiaDataRequest.Ctx != nil {
+		req.SetContext(TibiaDataRequest.Ctx)
+	}
 	if TibiaDataRequest.UserAgent != "" {
 		req.SetHeader(userAgentHeader, TibiaDataRequest.UserAgent)
 	}
