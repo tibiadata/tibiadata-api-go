@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -25,6 +26,7 @@ func TestFansiteUnixConversions(t *testing.T) {
 	assert.Equal(t, "", fansiteUnixToDate(0))
 	assert.Equal(t, "", fansiteUnixToDate(-1))
 	assert.Equal(t, "2021-12-24", fansiteUnixToDate(1640339536))
+	assert.Equal(t, "2026-10-20", fansiteUnixToDate(time.Date(2026, time.October, 19, 22, 0, 0, 0, time.UTC).Unix()))
 }
 
 func TestFansiteCharacterJSONOptionalFields(t *testing.T) {
