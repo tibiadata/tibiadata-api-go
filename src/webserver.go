@@ -617,6 +617,8 @@ func tibiaGuildsOverview(c *gin.Context) {
 //	@Param			vocation	path		string	true	"The vocation"		default(all)		Enums(all, knights, paladins, sorcerers, druids, monks)																																																		extensions(x-example=all)
 //	@Param			page		path		int		true	"The current page"	default(1)			minimum(1)																																																													extensions(x-example=1)
 //	@Success		200			{object}	HighscoresResponse
+//	@Success		301			"Permanent redirect to the canonical category URL"
+//	@Header			301			{string}	Location	"Canonical category URL"
 //	@Failure		400			{object}	Information
 //	@Failure		404			{object}	Information
 //	@Failure		502			{object}	Information
