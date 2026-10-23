@@ -1,5 +1,51 @@
 # Changelog
 
+## [5.0.0] - 2026-10-23
+
+### The release of API v5
+
+API v5 introduces a new major version alongside v4, with canonical highscore category URLs, more accurate character data through Fansite API integration, and improved operational visibility through structured logging and OpenTelemetry.
+
+Head over to [tibiadata.com](https://tibiadata.com/2026/10/tibiadata-api-v5-released/) for more information.
+
+### Added
+
+- feat: prepare API v5 alongside v4 ([#767](https://github.com/tibiadata/tibiadata-api-go/pull/767) by [tobiasehlert](https://github.com/tobiasehlert))
+- feat: add support for Fansite API ([#734](https://github.com/tibiadata/tibiadata-api-go/pull/734) by [tobiasehlert](https://github.com/tobiasehlert))
+- feat(cache): add upstream-aware cache headers ([#747](https://github.com/tibiadata/tibiadata-api-go/pull/747) by [tobiasehlert](https://github.com/tobiasehlert))
+- feat: add structured logging with slog ([#752](https://github.com/tibiadata/tibiadata-api-go/pull/752) by [kodezy](https://github.com/kodezy))
+- feat(telemetry): add OpenTelemetry traces and metrics ([#792](https://github.com/tibiadata/tibiadata-api-go/pull/792) by [tobiasehlert](https://github.com/tobiasehlert))
+
+### Changed
+
+- chore(api): set default API version to v5 ([#798](https://github.com/tibiadata/tibiadata-api-go/pull/798) by [tobiasehlert](https://github.com/tobiasehlert))
+- fix(highscores): redirect v5 category aliases to canonical names ([#779](https://github.com/tibiadata/tibiadata-api-go/pull/779) by [tobiasehlert](https://github.com/tobiasehlert))
+- fix(cache): use fixed endpoint cache lifetimes ([#751](https://github.com/tibiadata/tibiadata-api-go/pull/751) by [tobiasehlert](https://github.com/tobiasehlert))
+- refactor(config): rename `TIBIADATA_CACHE_AWARENESS` to `TIBIADATA_CACHE_CONTROL_HEADERS` ([#756](https://github.com/tibiadata/tibiadata-api-go/pull/756) by [tobiasehlert](https://github.com/tobiasehlert))
+- deps(ci): bump actions/download-artifact from 8.0.1 to 8.0.2 ([#763](https://github.com/tibiadata/tibiadata-api-go/pull/763) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump actions/upload-artifact from 7.0.1 to 7.0.2 ([#764](https://github.com/tibiadata/tibiadata-api-go/pull/764) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump codecov/codecov-action from 7.0.0 to 7.1.1 ([#729](https://github.com/tibiadata/tibiadata-api-go/pull/729), [#736](https://github.com/tibiadata/tibiadata-api-go/pull/736) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/build-push-action from 7.3.0 to 7.4.0 ([#731](https://github.com/tibiadata/tibiadata-api-go/pull/731) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/setup-buildx-action from 4.3.0 to 4.4.0 ([#732](https://github.com/tibiadata/tibiadata-api-go/pull/732) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/setup-qemu-action from 4.2.0 to 4.4.0 ([#730](https://github.com/tibiadata/tibiadata-api-go/pull/730) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump tailscale/github-action from 4.1.3 to 4.2.0 ([#739](https://github.com/tibiadata/tibiadata-api-go/pull/739) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump the codeql-action group with 3 updates ([#723](https://github.com/tibiadata/tibiadata-api-go/pull/723), [#735](https://github.com/tibiadata/tibiadata-api-go/pull/735), [#741](https://github.com/tibiadata/tibiadata-api-go/pull/741), [#762](https://github.com/tibiadata/tibiadata-api-go/pull/762), [#786](https://github.com/tibiadata/tibiadata-api-go/pull/786) by [dependabot](https://github.com/dependabot))
+- deps(docker): bump alpine from 3.24.1 to 3.24.2 ([#733](https://github.com/tibiadata/tibiadata-api-go/pull/733) by [dependabot](https://github.com/dependabot))
+- deps(docker): bump golang from 1.26.6 to 1.27.2 ([#724](https://github.com/tibiadata/tibiadata-api-go/pull/724), [#783](https://github.com/tibiadata/tibiadata-api-go/pull/783) by [dependabot](https://github.com/dependabot))
+- deps(go): bump `github.com/gin-contrib/gzip` from 1.2.6 to 1.2.8 ([#726](https://github.com/tibiadata/tibiadata-api-go/pull/726), [#740](https://github.com/tibiadata/tibiadata-api-go/pull/740) by [dependabot](https://github.com/dependabot))
+- deps(go): bump `golang.org/x/net` from 0.34.0 to 0.55.0 in `/tools` ([#784](https://github.com/tibiadata/tibiadata-api-go/pull/784) by [dependabot](https://github.com/dependabot))
+- deps(go): bump `golang.org/x/net` from 0.58.0 to 0.61.0 ([#728](https://github.com/tibiadata/tibiadata-api-go/pull/728), [#766](https://github.com/tibiadata/tibiadata-api-go/pull/766) by [dependabot](https://github.com/dependabot))
+- deps(go): bump `golang.org/x/text` from 0.41.0 to 0.43.0 ([#727](https://github.com/tibiadata/tibiadata-api-go/pull/727), [#765](https://github.com/tibiadata/tibiadata-api-go/pull/765) by [dependabot](https://github.com/dependabot))
+
+### Fixed
+
+- fix(api): return 404 for missing API resources ([#760](https://github.com/tibiadata/tibiadata-api-go/pull/760) by [rootdevdb](https://github.com/rootdevdb))
+- fix(character): align JSON Fansite API parsing with HTML output ([#744](https://github.com/tibiadata/tibiadata-api-go/pull/744) by [tobiasehlert](https://github.com/tobiasehlert))
+- fix(characters): honor Fansite API vocation promotions ([#768](https://github.com/tibiadata/tibiadata-api-go/pull/768) by [tobiasehlert](https://github.com/tobiasehlert))
+- fix(characters): match Fansite API death reasons and killer names to HTML ([#771](https://github.com/tibiadata/tibiadata-api-go/pull/771) by [tobiasehlert](https://github.com/tobiasehlert))
+- fix(character): unescape double-encoded achievement names ([#772](https://github.com/tibiadata/tibiadata-api-go/pull/772) by [tobiasehlert](https://github.com/tobiasehlert))
+- fix(characters): set positions from Fansite API group values ([#777](https://github.com/tibiadata/tibiadata-api-go/pull/777) by [tobiasehlert](https://github.com/tobiasehlert))
+
 ## [4.10.0] - 2026-08-31
 
 ### Added
@@ -804,6 +850,7 @@ Head over to [tibiadata.com](https://tibiadata.com/2022/03/tibiadata-api-v3-rele
 
 Initial commit
 
+[5.0.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.10.0...v5.0.0
 [4.10.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.9.0...v4.10.0
 [4.9.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.8.0...v4.9.0
 [4.8.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.7.0...v4.8.0
