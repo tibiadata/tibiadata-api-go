@@ -258,7 +258,7 @@ jobs:
           echo "::endgroup::"
 
   argocd:
-    if: github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions: {}
     needs:
