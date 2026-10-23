@@ -229,7 +229,7 @@ func runWebServer() {
 		})
 	})
 
-	// TibiaData API version 4 endpoints
+	// TibiaData API version 4 and 5 endpoints
 	registerAPIVersions(router)
 
 	// Container version details endpoint

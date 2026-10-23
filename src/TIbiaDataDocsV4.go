@@ -1,6 +1,6 @@
 package main
 
-// These documentation-only handlers describe the current v4 API without tying
+// These documentation-only handlers describe the v4 API without tying
 // its Swagger definitions to the runtime handlers.
 
 // BoostableBosses godoc

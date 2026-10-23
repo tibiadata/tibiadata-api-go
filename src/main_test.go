@@ -10,8 +10,8 @@ import (
 
 func TestInit(t *testing.T) {
 	const (
-		expectedUserAgent     = "TibiaData-API/v4 (release/unknown; build/manual; commit/-; edition/open-source)"
-		expectedUserAgentHost = "TibiaData-API/v4 (release/unknown; build/manual; commit/-; edition/open-source; +https://unittest.example.com)"
+		expectedUserAgent     = "TibiaData-API/v5 (release/unknown; build/manual; commit/-; edition/open-source)"
+		expectedUserAgentHost = "TibiaData-API/v5 (release/unknown; build/manual; commit/-; edition/open-source; +https://unittest.example.com)"
 	)
 
 	TibiaDataHost = ""
