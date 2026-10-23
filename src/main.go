@@ -15,7 +15,7 @@ var (
 	TibiaDataDefaultVoc string = "all"
 
 	// TibiaData app flags for running
-	TibiaDataAPIversion      int = 4
+	TibiaDataAPIversion      int = 5
 	TibiaDataDebug           bool
 	TibiaDataRestrictionMode bool
 	TibiaDataCacheControl    bool = true
