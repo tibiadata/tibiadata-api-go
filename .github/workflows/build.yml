@@ -294,6 +294,7 @@ jobs:
           client-payload: |-
             {
               "docker_digest": "${{ needs.manifest.outputs.docker_build_digest }}",
+              "release_version": "${{ needs.manifest.outputs.docker_meta_version }}",
               "subdomain": "${{ steps.determine_deployment.outputs.subdomain }}"
             }
 
