@@ -224,6 +224,41 @@ func TestFansiteCharacterJSONFixtures(t *testing.T) {
 	}
 }
 
+func TestCharacterWillicusHouseDates(t *testing.T) {
+	expected := []Houses{
+		{Name: "Alai Flats, Flat 05", Town: "Thais", Paid: "2026-10-25", HouseID: 10305},
+		{Name: "Alai Flats, Flat 04", Town: "Thais", Paid: "2026-10-22", HouseID: 10304},
+		{Name: "Alai Flats, Flat 02", Town: "Thais", Paid: "2026-11-11", HouseID: 10302},
+	}
+
+	for _, extension := range []string{"html", "json"} {
+		t.Run(extension, func(t *testing.T) {
+			data, err := static.TestFiles.ReadFile("testdata/characters/Willicus." + extension)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			response, err := TibiaCharactersCharacterImpl(string(data), "")
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			assert.Equal(t, "Willicus", response.Character.CharacterInfo.Name)
+			assert.Equal(t, expected, response.Character.CharacterInfo.Houses)
+
+			if extension == "json" {
+				var raw fansiteAPICharacterResponse
+				if err := json.Unmarshal(data, &raw); err != nil {
+					t.Fatal(err)
+				}
+				for i, house := range raw.CharacterAdminInformation.Houses {
+					assert.Equal(t, expected[i].Paid, time.Unix(house.PaidUntil, 0).UTC().Format("2006-01-02"))
+				}
+			}
+		})
+	}
+}
+
 func TestCharacterTrollefar(t *testing.T) {
 	testCases := []struct {
 		name          string
