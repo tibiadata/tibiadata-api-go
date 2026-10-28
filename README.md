@@ -127,7 +127,7 @@ The following environment variables can be used to configure the API.
 | `TIBIADATA_LOG_CF_RAY` | `false` | Logs Cloudflare's `Cf-Ray` header as `request_id` when `true`. Enable only when the API is reachable exclusively through Cloudflare. |
 | `TIBIADATA_LOG_FORMAT` | `text` | Log output format: `text` or `json`. |
 | `TIBIADATA_LOG_LEVEL` | `info` (or `debug` when `DEBUG_MODE=true` and unset) | Application log level: `debug`, `info`, `warn`, `error`. |
-| `TIBIADATA_OTEL_ENABLED` | `false` | Enables OpenTelemetry traces and metrics (see [OpenTelemetry](#opentelemetry)). |
+| `TIBIADATA_OTEL_ENABLED` | `false` | Enables OpenTelemetry traces, metrics and logs (see [OpenTelemetry](#opentelemetry)). |
 | `TIBIADATA_PROTOCOL` | `https` | Protocol used together with `TIBIADATA_HOST` when generating API URLs. |
 | `TIBIADATA_PROXY` | `www.tibia.com` | Domain to fetch data from instead of `www.tibia.com`, e.g. a caching proxy. |
 | `TIBIADATA_PROXY_PROTOCOL` | `https` | Protocol for `TIBIADATA_PROXY` (`http` or `https`). Only used when `TIBIADATA_PROXY` is set. |
@@ -140,12 +140,13 @@ Set `TIBIADATA_LOG_CF_RAY=true` to log Cloudflare's `Cf-Ray` header as `request_
 
 ### OpenTelemetry
 
-Set `TIBIADATA_OTEL_ENABLED=true` to enable [OpenTelemetry](https://opentelemetry.io/) traces and metrics. When enabled, the API:
+Set `TIBIADATA_OTEL_ENABLED=true` to enable [OpenTelemetry](https://opentelemetry.io/) traces, metrics and logs. When enabled, the API:
 
 - creates a server span for each incoming request and continues traces from incoming W3C `traceparent` headers,
 - creates client spans for upstream requests (e.g. to tibia.com) and propagates the trace context to them,
 - records HTTP server and client metrics such as `http.server.request.duration` (request count, latency, method, route and status code),
-- adds `trace_id` and `span_id` to request logs, so logs can be correlated with traces.
+- exports application `slog` records as OpenTelemetry logs, while continuing to write them to stdout in the configured text or JSON format,
+- adds `trace_id` and `span_id` to stdout request logs and correlates context-aware OpenTelemetry log records with their active traces.
 
 Probe endpoints (`/ping`, `/health`, `/healthz`, `/readyz`) are included in metrics but not traced.
 
@@ -157,17 +158,19 @@ All other settings use the standard [OpenTelemetry environment variables](https:
 | `OTEL_RESOURCE_ATTRIBUTES` | _(empty)_ | Additional resource attributes, e.g. `deployment.environment=production`. |
 | `OTEL_TRACES_EXPORTER` | `otlp` | Trace exporter: `otlp`, `console` or `none`. |
 | `OTEL_METRICS_EXPORTER` | `otlp` | Metrics exporter: `otlp`, `prometheus`, `console` or `none`. |
+| `OTEL_LOGS_EXPORTER` | `otlp` | Log exporter: `otlp`, `console` or `none`. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318` | OTLP collector endpoint. |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf` | OTLP protocol: `http/protobuf` or `grpc`. |
 | `OTEL_TRACES_SAMPLER` | `parentbased_always_on` | Trace sampler, e.g. `parentbased_traceidratio` together with `OTEL_TRACES_SAMPLER_ARG=0.1`. |
 | `OTEL_EXPORTER_PROMETHEUS_HOST` / `OTEL_EXPORTER_PROMETHEUS_PORT` | `localhost` / `9464` | Listen address of the Prometheus `/metrics` endpoint when `OTEL_METRICS_EXPORTER=prometheus`. Set the host to `0.0.0.0` to expose it outside the container. |
 
-A signal whose exporter is set to `none` creates no spans or measurements. When telemetry is disabled, or both exporters are `none`, no instrumentation is installed at all. For example, to collect only metrics:
+A signal whose exporter is set to `none` is not exported. When telemetry is disabled, or traces and metrics are both `none`, no request instrumentation is installed. Logs are still written to stdout; set `OTEL_LOGS_EXPORTER=none` to disable their OpenTelemetry export. For example, to collect only metrics:
 
 ```bash
 TIBIADATA_OTEL_ENABLED=true
 OTEL_TRACES_EXPORTER=none
 OTEL_METRICS_EXPORTER=prometheus
+OTEL_LOGS_EXPORTER=none
 OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0
 ```
 

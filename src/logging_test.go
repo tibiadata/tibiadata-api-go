@@ -8,9 +8,11 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -147,11 +149,8 @@ func configureCloudflareRayLoggingForTest(t *testing.T, enabled bool) {
 	configureCloudflareRayLogging()
 }
 
-func TestTraceLogAttrsEmptyWithoutTracing(t *testing.T) {
-	assert.Empty(t, traceLogAttrs(context.Background()))
-}
-
-func TestTraceLogAttrsFromSpanContext(t *testing.T) {
+func TestTraceContextHandlerAddsTraceAttributes(t *testing.T) {
+	var buf bytes.Buffer
 	traceID, _ := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
 	spanID, _ := trace.SpanIDFromHex("0123456789abcdef")
 	ctx := trace.ContextWithSpanContext(context.Background(), trace.NewSpanContext(trace.SpanContextConfig{
@@ -160,16 +159,17 @@ func TestTraceLogAttrsFromSpanContext(t *testing.T) {
 		TraceFlags: trace.FlagsSampled,
 	}))
 
-	assert.Equal(t, []any{
-		"trace_id", "0123456789abcdef0123456789abcdef",
-		"span_id", "0123456789abcdef",
-	}, traceLogAttrs(ctx))
+	handler := traceContextHandler{handler: newTibiaDataLogHandler(&buf, "text", slog.LevelInfo)}
+	require.NoError(t, handler.Handle(ctx, slog.NewRecord(time.Now(), slog.LevelInfo, "hello", 0)))
+
+	assert.Contains(t, buf.String(), "trace_id=0123456789abcdef0123456789abcdef")
+	assert.Contains(t, buf.String(), "span_id=0123456789abcdef")
 }
 
 func captureLogs(t *testing.T, level slog.Level) *bytes.Buffer {
 	var buf bytes.Buffer
 	previous := slog.Default()
-	slog.SetDefault(slog.New(newTibiaDataLogHandler(&buf, "text", level)))
+	slog.SetDefault(slog.New(traceContextHandler{handler: newTibiaDataLogHandler(&buf, "text", level)}))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 	return &buf
 }

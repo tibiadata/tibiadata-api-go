@@ -14,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -30,17 +31,18 @@ var (
 	tibiaDataTelemetryEnabled bool
 	tibiaDataTracingEnabled   bool
 	tibiaDataMetricsEnabled   bool
+	tibiaDataLogsEnabled      bool
 	tibiaDataTelemetryStop    = func(context.Context) error { return nil }
 )
 
-// initTibiaDataTelemetry configures the global OpenTelemetry tracer and meter
-// providers when TIBIADATA_OTEL_ENABLED is true. Exporters and SDK settings are
-// read from the standard OTEL_* environment variables.
+// initTibiaDataTelemetry configures global OpenTelemetry providers when
+// TIBIADATA_OTEL_ENABLED is true. Exporters and SDK settings are read from the
+// standard OTEL_* environment variables.
 func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, error) {
 	noopShutdown := func(context.Context) error { return nil }
 
 	tibiaDataTelemetryEnabled = getEnvAsBool(telemetryEnabledEnv, false)
-	tibiaDataTracingEnabled, tibiaDataMetricsEnabled = false, false
+	tibiaDataTracingEnabled, tibiaDataMetricsEnabled, tibiaDataLogsEnabled = false, false, false
 	if !tibiaDataTelemetryEnabled {
 		slog.Info("TibiaData API opentelemetry", "enabled", false)
 		return noopShutdown, nil
@@ -52,6 +54,10 @@ func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, e
 	}
 
 	var shutdowns []func(context.Context) error
+	previousTracerProvider := otel.GetTracerProvider()
+	previousMeterProvider := otel.GetMeterProvider()
+	previousLoggerProvider := otel.GetLoggerProvider()
+	var tracerProviderConfigured, meterProviderConfigured, loggerProviderConfigured bool
 	shutdown := func(ctx context.Context) error {
 		var errs []error
 		for _, s := range shutdowns {
@@ -59,12 +65,27 @@ func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, e
 		}
 		return errors.Join(errs...)
 	}
+	fail := func(err error) (func(context.Context) error, error) {
+		err = errors.Join(err, shutdown(ctx))
+		if tracerProviderConfigured {
+			otel.SetTracerProvider(previousTracerProvider)
+		}
+		if meterProviderConfigured {
+			otel.SetMeterProvider(previousMeterProvider)
+		}
+		if loggerProviderConfigured {
+			otel.SetLoggerProvider(previousLoggerProvider)
+		}
+		tibiaDataTelemetryEnabled = false
+		tibiaDataTracingEnabled, tibiaDataMetricsEnabled, tibiaDataLogsEnabled = false, false, false
+		return noopShutdown, err
+	}
 
 	// Signals whose exporter is "none" keep the global no-op provider, so no
 	// spans or measurements are created only to be discarded.
 	spanExporter, err := autoexport.NewSpanExporter(ctx)
 	if err != nil {
-		return noopShutdown, err
+		return fail(err)
 	}
 	if !autoexport.IsNoneSpanExporter(spanExporter) {
 		tracerProvider := sdktrace.NewTracerProvider(
@@ -72,13 +93,14 @@ func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, e
 			sdktrace.WithResource(res),
 		)
 		otel.SetTracerProvider(tracerProvider)
+		tracerProviderConfigured = true
 		tibiaDataTracingEnabled = true
 		shutdowns = append(shutdowns, tracerProvider.Shutdown)
 	}
 
 	metricReader, err := autoexport.NewMetricReader(ctx)
 	if err != nil {
-		return noopShutdown, errors.Join(err, shutdown(ctx))
+		return fail(err)
 	}
 	if !autoexport.IsNoneMetricReader(metricReader) {
 		meterProvider := sdkmetric.NewMeterProvider(
@@ -86,8 +108,25 @@ func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, e
 			sdkmetric.WithResource(res),
 		)
 		otel.SetMeterProvider(meterProvider)
+		meterProviderConfigured = true
 		tibiaDataMetricsEnabled = true
 		shutdowns = append(shutdowns, meterProvider.Shutdown)
+	}
+
+	logExporter, err := autoexport.NewLogExporter(ctx)
+	if err != nil {
+		return fail(err)
+	}
+	if !autoexport.IsNoneLogExporter(logExporter) {
+		loggerProvider := sdklog.NewLoggerProvider(
+			sdklog.WithProcessor(sdklog.NewBatchProcessor(logExporter)),
+			sdklog.WithResource(res),
+		)
+		otel.SetLoggerProvider(loggerProvider)
+		loggerProviderConfigured = true
+		configureTibiaDataOTelLogging(loggerProvider)
+		tibiaDataLogsEnabled = true
+		shutdowns = append(shutdowns, loggerProvider.Shutdown)
 	}
 
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
@@ -95,13 +134,15 @@ func initTibiaDataTelemetry(ctx context.Context) (func(context.Context) error, e
 		propagation.Baggage{},
 	))
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		slog.Warn("TibiaData API opentelemetry error", "error", err)
+		// Avoid sending exporter errors back through the same OTel log pipeline.
+		logOpenTelemetryError(err)
 	}))
 
 	slog.Info("TibiaData API opentelemetry",
 		"enabled", true,
 		"traces_exporter", envOrDefault("OTEL_TRACES_EXPORTER", "otlp"),
 		"metrics_exporter", envOrDefault("OTEL_METRICS_EXPORTER", "otlp"),
+		"logs_exporter", envOrDefault("OTEL_LOGS_EXPORTER", "otlp"),
 	)
 
 	return shutdown, nil
@@ -132,8 +173,8 @@ func envOrDefault(key, fallback string) string {
 
 type skipTraceKey struct{}
 
-// tibiaDataTelemetryActive reports whether at least one telemetry signal is
-// exported, i.e. whether request instrumentation should be installed.
+// tibiaDataTelemetryActive reports whether request tracing or metrics should
+// be installed. Log export does not require Gin instrumentation.
 func tibiaDataTelemetryActive() bool {
 	return tibiaDataTelemetryEnabled && (tibiaDataTracingEnabled || tibiaDataMetricsEnabled)
 }
