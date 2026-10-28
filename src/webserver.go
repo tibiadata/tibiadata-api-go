@@ -1258,7 +1258,7 @@ func TibiaDataErrorHandler(c *gin.Context, err error, httpCode int) {
 
 		info.Status.Message = err.Error()
 
-		slog.Debug("TibiaDataErrorHandler",
+		slog.DebugContext(ginRequestContext(c), "TibiaDataErrorHandler",
 			"http_code", info.Status.HTTPCode,
 			"message", info.Status.Message,
 		)
@@ -1461,16 +1461,17 @@ func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 
 	j = tibiaDataResponseForRequest(c, j)
 
-	if slog.Default().Enabled(context.Background(), slog.LevelDebug) {
+	ctx := ginRequestContext(c)
+	if slog.Default().Enabled(ctx, slog.LevelDebug) {
 		requestURI := ""
 		if c.Request != nil {
 			requestURI = c.Request.RequestURI
 		}
-		slog.Debug("handler returned data", "handler", s, "request_uri", requestURI)
+		slog.DebugContext(ctx, "handler returned data", "handler", s, "request_uri", requestURI)
 		js, err := json.Marshal(j)
-		slog.Debug("handler response body", "body", string(js))
+		slog.DebugContext(ctx, "handler response body", "body", string(js))
 		if err != nil {
-			slog.Debug("handler response marshal error", "error", err)
+			slog.DebugContext(ctx, "handler response marshal error", "error", err)
 		}
 	}
 
@@ -1479,7 +1480,7 @@ func TibiaDataAPIHandleResponse(c *gin.Context, s string, j interface{}) {
 		if c.Request != nil {
 			requestURI = c.Request.RequestURI
 		}
-		slog.Info("handler executed successfully", "handler", s, "request_uri", requestURI)
+		slog.InfoContext(ctx, "handler executed successfully", "handler", s, "request_uri", requestURI)
 	}
 
 	// return successful response
@@ -1494,7 +1495,7 @@ func TibiaDataAPIHandleCachedResponse(c *gin.Context, name string, data interfac
 			if c.Request != nil {
 				requestURI = c.Request.RequestURI
 			}
-			slog.Debug("cache response",
+			slog.DebugContext(ginRequestContext(c), "cache response",
 				"handler", name,
 				"request_uri", requestURI,
 				"max_age", maxAge,
@@ -1576,18 +1577,18 @@ func TibiaDataHTMLDataCollector(ctx context.Context, TibiaDataRequest TibiaDataR
 
 	if TibiaDataDebug {
 		// logging trace information for resty
-		TibiaDataRequestTraceLogger(res, err)
+		TibiaDataRequestTraceLogger(ctx, res, err)
 	}
 
 	if err != nil {
 		if res != nil && res.Request != nil {
-			slog.Error("TibiaDataHTMLDataCollector request failed",
+			slog.ErrorContext(ctx, "TibiaDataHTMLDataCollector request failed",
 				"status", res.Status(),
 				"url", res.Request.URL,
 				"error", err,
 			)
 		} else {
-			slog.Error("TibiaDataHTMLDataCollector request failed", "error", err)
+			slog.ErrorContext(ctx, "TibiaDataHTMLDataCollector request failed", "error", err)
 		}
 		return "", err
 	}
@@ -1598,14 +1599,14 @@ func TibiaDataHTMLDataCollector(ctx context.Context, TibiaDataRequest TibiaDataR
 	case http.StatusForbidden:
 		// throttled request
 		LogMessage = "request throttled due to rate-limitation on tibia.com"
-		slog.Warn("TibiaDataHTMLDataCollector", "message", LogMessage)
+		slog.WarnContext(ctx, "TibiaDataHTMLDataCollector", "message", LogMessage)
 		return "", validation.ErrStatusForbidden
 	case http.StatusFound:
 		// Check if page is in maintenance mode
 		location, _ := res.RawResponse.Location()
 		if location != nil && location.Host == "maintenance.tibia.com" {
 			LogMessage := "maintenance mode detected on tibia.com"
-			slog.Info("TibiaDataHTMLDataCollector", "message", LogMessage)
+			slog.InfoContext(ctx, "TibiaDataHTMLDataCollector", "message", LogMessage)
 			return "", validation.ErrorMaintenanceMode
 		}
 
@@ -1613,14 +1614,14 @@ func TibiaDataHTMLDataCollector(ctx context.Context, TibiaDataRequest TibiaDataR
 			"unknown error occurred on tibia.com (Status: %d, RequestURL: %s)",
 			http.StatusFound, res.Request.URL,
 		)
-		slog.Error("TibiaDataHTMLDataCollector", "message", LogMessage)
+		slog.ErrorContext(ctx, "TibiaDataHTMLDataCollector", "message", LogMessage)
 		return "", validation.ErrStatusFound
 	default:
 		LogMessage = fmt.Sprintf(
 			"unknown error and status occurred on tibia.com (Status: %d, RequestURL: %s)",
 			res.StatusCode(), res.Request.URL,
 		)
-		slog.Error("TibiaDataHTMLDataCollector", "message", LogMessage)
+		slog.ErrorContext(ctx, "TibiaDataHTMLDataCollector", "message", LogMessage)
 		return "", validation.ErrStatusUnknown
 	}
 
@@ -1631,7 +1632,7 @@ func TibiaDataHTMLDataCollector(ctx context.Context, TibiaDataRequest TibiaDataR
 	// Load the HTML document
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(res.Body()))
 	if err != nil {
-		slog.Error("TibiaDataHTMLDataCollector parse error", "url", res.Request.URL, "error", err)
+		slog.ErrorContext(ctx, "TibiaDataHTMLDataCollector parse error", "url", res.Request.URL, "error", err)
 		return "", err
 	}
 

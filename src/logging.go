@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
+	otelLog "go.opentelemetry.io/otel/log"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -21,12 +23,15 @@ const (
 )
 
 var cloudflareRayLoggingEnabled bool
+var tibiaDataLogStdoutHandler slog.Handler
+var tibiaDataLogConfiguredLevel slog.Leveler
 
 func initTibiaDataLogging() {
 	level := tibiaDataLogLevel()
 	format := strings.ToLower(getEnv("TIBIADATA_LOG_FORMAT", "text"))
-	handler := newTibiaDataLogHandler(os.Stdout, format, level)
-	slog.SetDefault(slog.New(handler))
+	tibiaDataLogConfiguredLevel = level
+	tibiaDataLogStdoutHandler = newTibiaDataLogHandler(os.Stdout, format, level)
+	slog.SetDefault(slog.New(traceContextHandler{handler: tibiaDataLogStdoutHandler}))
 	configureCloudflareRayLogging()
 
 	if v := strings.TrimSpace(os.Getenv("TIBIADATA_LOG_LEVEL")); v != "" && !isKnownLogLevel(v) {
@@ -35,6 +40,22 @@ func initTibiaDataLogging() {
 	if format != "text" && format != "json" {
 		slog.Warn("unknown TIBIADATA_LOG_FORMAT, falling back to text", "value", format)
 	}
+}
+
+func configureTibiaDataOTelLogging(provider otelLog.LoggerProvider) {
+	stdoutHandler := traceContextHandler{handler: tibiaDataLogStdoutHandler}
+	otelHandler := levelHandler{
+		handler: otelslog.NewHandler(telemetryService, otelslog.WithLoggerProvider(provider)),
+		level:   tibiaDataLogConfiguredLevel,
+	}
+	slog.SetDefault(slog.New(slog.NewMultiHandler(stdoutHandler, otelHandler)))
+}
+
+func logOpenTelemetryError(err error) {
+	slog.New(traceContextHandler{handler: tibiaDataLogStdoutHandler}).Warn(
+		"TibiaData API opentelemetry error",
+		"error", err,
+	)
 }
 
 func configureCloudflareRayLogging() {
@@ -80,12 +101,53 @@ func newTibiaDataLogHandler(w io.Writer, format string, level slog.Leveler) slog
 	return slog.NewTextHandler(w, opts)
 }
 
-func traceLogAttrs(ctx context.Context) []any {
+type levelHandler struct {
+	handler slog.Handler
+	level   slog.Leveler
+}
+
+func (h levelHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return level >= h.level.Level() && h.handler.Enabled(ctx, level)
+}
+
+func (h levelHandler) Handle(ctx context.Context, record slog.Record) error {
+	return h.handler.Handle(ctx, record)
+}
+
+func (h levelHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return levelHandler{handler: h.handler.WithAttrs(attrs), level: h.level}
+}
+
+func (h levelHandler) WithGroup(name string) slog.Handler {
+	return levelHandler{handler: h.handler.WithGroup(name), level: h.level}
+}
+
+type traceContextHandler struct {
+	handler slog.Handler
+}
+
+func (h traceContextHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return h.handler.Enabled(ctx, level)
+}
+
+func (h traceContextHandler) Handle(ctx context.Context, record slog.Record) error {
 	sc := trace.SpanContextFromContext(ctx)
-	if !sc.IsValid() {
-		return nil
+	if sc.IsValid() {
+		record = record.Clone()
+		record.AddAttrs(
+			slog.String("trace_id", sc.TraceID().String()),
+			slog.String("span_id", sc.SpanID().String()),
+		)
 	}
-	return []any{"trace_id", sc.TraceID().String(), "span_id", sc.SpanID().String()}
+	return h.handler.Handle(ctx, record)
+}
+
+func (h traceContextHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return traceContextHandler{handler: h.handler.WithAttrs(attrs)}
+}
+
+func (h traceContextHandler) WithGroup(name string) slog.Handler {
+	return traceContextHandler{handler: h.handler.WithGroup(name)}
 }
 
 func requestLogAttrs(r *http.Request) []any {
@@ -96,6 +158,13 @@ func requestLogAttrs(r *http.Request) []any {
 		return []any{"request_id", requestID}
 	}
 	return nil
+}
+
+func ginRequestContext(c *gin.Context) context.Context {
+	if c != nil && c.Request != nil {
+		return c.Request.Context()
+	}
+	return context.Background()
 }
 
 func ginAccessLogMiddleware() gin.HandlerFunc {
@@ -117,7 +186,6 @@ func ginAccessLogMiddleware() gin.HandlerFunc {
 			"latency", time.Since(start),
 			"client_ip", c.ClientIP(),
 		}
-		attrs = append(attrs, traceLogAttrs(c.Request.Context())...)
 		attrs = append(attrs, requestLogAttrs(c.Request)...)
 
 		if len(c.Errors) > 0 {
@@ -155,9 +223,8 @@ func ginRecoveryMiddleware() gin.HandlerFunc {
 			"path", c.Request.URL.Path,
 			"stack", string(debug.Stack()),
 		}
-		attrs = append(attrs, traceLogAttrs(c.Request.Context())...)
 		attrs = append(attrs, requestLogAttrs(c.Request)...)
-		slog.Error("panic recovered", attrs...)
+		slog.ErrorContext(c.Request.Context(), "panic recovered", attrs...)
 		c.AbortWithStatus(http.StatusInternalServerError)
 	})
 }
@@ -168,5 +235,6 @@ func tibiaDataLogFatal(msg string, err error) {
 	} else {
 		slog.Error(msg)
 	}
+	shutdownTibiaDataTelemetry()
 	os.Exit(1)
 }

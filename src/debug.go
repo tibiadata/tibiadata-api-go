@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -33,13 +34,13 @@ type Debug struct {
 }
 
 // TibiaDataRequestTraceLogger logs resty client trace details when DEBUG_MODE is enabled.
-func TibiaDataRequestTraceLogger(res *resty.Response, err error) {
+func TibiaDataRequestTraceLogger(ctx context.Context, res *resty.Response, err error) {
 	if res == nil || res.Request == nil {
-		slog.Debug("resty trace", "error", err)
+		slog.DebugContext(ctx, "resty trace", "error", err)
 		return
 	}
 	trace := res.Request.TraceInfo()
-	slog.Debug("resty trace",
+	slog.DebugContext(ctx, "resty trace",
 		"dns_lookup", trace.DNSLookup,
 		"conn_time", trace.ConnTime,
 		"tcp_conn_time", trace.TCPConnTime,
