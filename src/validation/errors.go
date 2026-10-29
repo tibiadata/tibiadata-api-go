@@ -94,6 +94,14 @@ var (
 	// Code: 11008
 	ErrorHighscorePageTooBig = Error{errors.New("the provided page is larger than max amount of pages")}
 
+	// ErrorLeaderboardRotationInvalid will be sent if the rotation is neither a number nor current
+	// Code: 11009
+	ErrorLeaderboardRotationInvalid = Error{errors.New("the provided leaderboard rotation is invalid")}
+
+	// ErrorLeaderboardRotationDoesNotExist will be sent if the rotation is not listed on tibia.com
+	// Code: 11010
+	ErrorLeaderboardRotationDoesNotExist = Error{errors.New("the provided leaderboard rotation does not exist")}
+
 	// ErrorCreatureNameEmpty will be sent if the request contains an empty creature name
 	// Code: 12001
 	ErrorCreatureNameEmpty = Error{errors.New("the provided creature name is an empty string")}
@@ -259,6 +267,10 @@ func (e Error) Code() int {
 		return 11007
 	case ErrorHighscorePageTooBig:
 		return 11008
+	case ErrorLeaderboardRotationInvalid:
+		return 11009
+	case ErrorLeaderboardRotationDoesNotExist:
+		return 11010
 	case ErrorCreatureNameEmpty:
 		return 12001
 	case ErrorCreatureNameTooSmall:

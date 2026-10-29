@@ -44,15 +44,17 @@ var (
 )
 
 const (
-	cacheMaxAgeCharacters = 300 * time.Second
-	cacheMaxAgeGuilds     = 120 * time.Second
-	cacheMaxAgeHighscores = 900 * time.Second
-	cacheMaxAgeHouses     = 300 * time.Second
-	cacheMaxAgeNews       = 900 * time.Second
-	cacheMaxAgeWorlds     = 60 * time.Second
-	cacheControlHeader    = "Cache-Control"
-	userAgentHeader       = "User-Agent"
-	highscoresPath        = "/highscores/"
+	cacheMaxAgeCharacters   = 300 * time.Second
+	cacheMaxAgeGuilds       = 120 * time.Second
+	cacheMaxAgeHighscores   = 900 * time.Second
+	cacheMaxAgeHouses       = 300 * time.Second
+	cacheMaxAgeLeaderboards = 900 * time.Second
+	cacheMaxAgeNews         = 900 * time.Second
+	cacheMaxAgeWorlds       = 60 * time.Second
+	cacheControlHeader      = "Cache-Control"
+	userAgentHeader         = "User-Agent"
+	highscoresPath          = "/highscores/"
+	leaderboardsPath        = "/leaderboards/"
 )
 
 // initTibiaDataClient creates the shared resty client with static configuration.
@@ -286,7 +288,23 @@ func runWebServer() {
 
 func registerAPIVersions(router *gin.Engine) {
 	registerAPIVersionRoutes(router.Group("/v4"))
-	registerAPIVersionRoutes(router.Group("/v5"))
+
+	v5 := router.Group("/v5")
+	registerAPIVersionRoutes(v5)
+	registerAPIV5OnlyRoutes(v5)
+}
+
+// registerAPIV5OnlyRoutes registers endpoints that do not exist in API v4
+func registerAPIV5OnlyRoutes(v5 *gin.RouterGroup) {
+	// Tibia leaderboards
+	v5.GET("/leaderboards/:world", func(c *gin.Context) {
+		if TibiaDataCacheControl {
+			c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeLeaderboards))
+		}
+		c.Redirect(http.StatusMovedPermanently, v5.BasePath()+leaderboardsPath+url.PathEscape(c.Param("world"))+"/current/1")
+	})
+	v5.GET("/leaderboards/:world/:rotation", tibiaLeaderboards)
+	v5.GET("/leaderboards/:world/:rotation/:page", tibiaLeaderboards)
 }
 
 func registerAPIVersionRoutes(version *gin.RouterGroup) {
@@ -724,6 +742,91 @@ func tibiaHighscoresRedirectToCanonicalCategory(c *gin.Context, canonical string
 		c.Header(cacheControlHeader, tibiaDataCacheControlValue(cacheMaxAgeHighscores))
 	}
 	c.Redirect(http.StatusMovedPermanently, location)
+}
+
+// Leaderboards godoc
+//
+//	@Summary		Tibiadrome leaderboards
+//	@Description	Show the Tibiadrome leaderboard of a world for one rotation
+//	@Description	The rotation is a rotation ID or current. tibia.com only offers the current and the previous rotation; other IDs return 404 with error 11010.
+//	@Tags			leaderboards
+//	@Accept			json
+//	@Produce		json
+//	@Param			world		path		string	true	"The world"			extensions(x-example=Antica)
+//	@Param			rotation	path		string	true	"The rotation"		default(current)	extensions(x-example=current)
+//	@Param			page		path		int		true	"The current page"	default(1)			minimum(1)	extensions(x-example=1)
+//	@Success		200			{object}	LeaderboardsResponse
+//	@Failure		400			{object}	Information
+//	@Failure		404			{object}	Information
+//	@Failure		502			{object}	Information
+//	@Router			/v5/leaderboards/{world}/{rotation}/{page} [get]
+func tibiaLeaderboards(c *gin.Context) {
+	// getting params from URL
+	world := c.Param("world")
+	rotation := strings.ToLower(c.Param("rotation"))
+	page := c.Param("page")
+
+	// checking the rotation provided (0 means the current rotation)
+	if rotation == "" {
+		rotation = "current"
+	}
+	var rotationID int
+	if rotation != "current" {
+		var err error
+		if rotationID, err = strconv.Atoi(rotation); err != nil || rotationID < 1 {
+			TibiaDataErrorHandler(c, validation.ErrorLeaderboardRotationInvalid, http.StatusBadRequest)
+			return
+		}
+		rotation = strconv.Itoa(rotationID)
+	}
+
+	// checking the page provided
+	if page == "" {
+		page = "1"
+	}
+	pageNumber := TibiaDataStringToInteger(page)
+	if pageNumber < 1 {
+		TibiaDataErrorHandler(c, validation.ErrorHighscorePageInvalid, http.StatusBadRequest)
+		return
+	}
+
+	// Adding fix for First letter to be upper and rest lower
+	world = TibiaDataStringWorldFormatToTitle(world)
+
+	// Check if world exists
+	exists, err := validation.WorldExists(world)
+	if err != nil {
+		TibiaDataErrorHandler(c, err, 0)
+		return
+	}
+
+	if !exists {
+		TibiaDataErrorHandler(c, validation.ErrorWorldDoesNotExist, http.StatusBadRequest)
+		return
+	}
+
+	tibiadataRequest := TibiaDataRequestStruct{
+		Method:      resty.MethodGet,
+		URL:         tibiaLeaderboardsURL(world, rotationID, pageNumber),
+		CacheMaxAge: cacheMaxAgeLeaderboards,
+	}
+
+	tibiaDataRequestHandler(
+		c,
+		tibiadataRequest,
+		func(BoxContentHTML string) (interface{}, error) {
+			return TibiaLeaderboardsImpl(world, rotation, pageNumber, BoxContentHTML, tibiadataRequest.URL)
+		},
+		"TibiaLeaderboards")
+}
+
+// tibiaLeaderboardsURL builds the tibia.com leaderboards URL; rotationID 0 requests the current rotation
+func tibiaLeaderboardsURL(world string, rotationID, page int) string {
+	tibiaURL := "https://www.tibia.com/community/?subtopic=leaderboards&world=" + TibiaDataQueryEscapeString(world)
+	if rotationID > 0 {
+		tibiaURL += "&rotation=" + strconv.Itoa(rotationID)
+	}
+	return tibiaURL + "&currentpage=" + strconv.Itoa(page)
 }
 
 // House godoc
@@ -1344,6 +1447,7 @@ func tibiaDataValidationErrorIsNotFound(err validation.Error) bool {
 	case validation.ErrorWorldDoesNotExist,
 		validation.ErrorVocationDoesNotExist,
 		validation.ErrorHighscoreCategoryDoesNotExist,
+		validation.ErrorLeaderboardRotationDoesNotExist,
 		validation.ErrorHouseDoesNotExist,
 		validation.ErrorTownDoesNotExist,
 		validation.ErrorCharacterNotFound,
