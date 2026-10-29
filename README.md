@@ -180,7 +180,7 @@ You should consider to add a layer in front of this application, so you can do c
 
 We do so at least by using [Kong](https://github.com/Kong/kong) API Gateway, which solves features like caching, rate-limiting, authentication and more.
 
-Successful data responses include a `Cache-Control` header with fixed, endpoint-specific cache lifetimes: characters and houses 300 seconds, guilds 120 seconds, highscores and news 900 seconds, and worlds 60 seconds. Both `max-age` and `s-maxage` use the configured lifetime; upstream `Age`, `Date`, and `Last-Modified` headers do not affect it. Set `TIBIADATA_CACHE_CONTROL_HEADERS=false` to disable them.
+Successful data responses include a `Cache-Control` header with fixed, endpoint-specific cache lifetimes: characters and houses 300 seconds, guilds 120 seconds, highscores, leaderboards and news 900 seconds, and worlds 60 seconds. Both `max-age` and `s-maxage` use the configured lifetime; upstream `Age`, `Date`, and `Last-Modified` headers do not affect it. Set `TIBIADATA_CACHE_CONTROL_HEADERS=false` to disable them.
 
 ## API documentation
 
@@ -229,6 +229,7 @@ Those are the current existing endpoints.
 - GET `/v5/house/:world/:house_id`
 - GET `/v5/houses/:world/:town`
 - GET `/v5/killstatistics/:world`
+- GET `/v5/leaderboards/:world/:rotation/:page`
 - GET `/v5/news/archive`
 - GET `/v5/news/archive/:days`
 - GET `/v5/news/id/:news_id`

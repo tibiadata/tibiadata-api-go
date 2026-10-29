@@ -134,6 +134,19 @@ func TestFakeToUpCodeCoverage(t *testing.T) {
 	c.Params = []gin.Param{
 		{
 			Key:   "world",
+			Value: "Antica",
+		},
+	}
+
+	tibiaLeaderboards(c)
+	assert.Equal(http.StatusOK, w.Code)
+
+	w = httptest.NewRecorder()
+	c, _ = gin.CreateTestContext(w)
+
+	c.Params = []gin.Param{
+		{
+			Key:   "world",
 			Value: "antica",
 		},
 		{
@@ -591,6 +604,7 @@ func TestTibiaDataAPIHandleCachedResponse(t *testing.T) {
 		{name: "guilds", maxAge: cacheMaxAgeGuilds, cacheHeader: "public, max-age=120, s-maxage=120"},
 		{name: "highscores", maxAge: cacheMaxAgeHighscores, cacheHeader: "public, max-age=900, s-maxage=900"},
 		{name: "houses", maxAge: cacheMaxAgeHouses, cacheHeader: "public, max-age=300, s-maxage=300"},
+		{name: "leaderboards", maxAge: cacheMaxAgeLeaderboards, cacheHeader: "public, max-age=900, s-maxage=900"},
 		{name: "news", maxAge: cacheMaxAgeNews, cacheHeader: "public, max-age=900, s-maxage=900"},
 		{name: "worlds", maxAge: cacheMaxAgeWorlds, cacheHeader: "public, max-age=60, s-maxage=60"},
 	} {
@@ -712,7 +726,11 @@ func TestRegisterAPIVersionRoutes(t *testing.T) {
 	}
 
 	assert.NotEmpty(t, v4Routes)
-	assert.ElementsMatch(t, v4Routes, v5Routes)
+	assert.ElementsMatch(t, append(v4Routes,
+		"GET /leaderboards/:world",
+		"GET /leaderboards/:world/:rotation",
+		"GET /leaderboards/:world/:rotation/:page",
+	), v5Routes)
 
 	previousCacheControl := TibiaDataCacheControl
 	TibiaDataCacheControl = true
@@ -1173,4 +1191,66 @@ func TestHighscoresCategoryCanonicalRedirect(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestLeaderboardsRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	registerAPIVersions(router)
+
+	previousCacheControl := TibiaDataCacheControl
+	TibiaDataCacheControl = true
+	t.Cleanup(func() { TibiaDataCacheControl = previousCacheControl })
+
+	serve := func(path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		return w
+	}
+
+	errorCode := func(t *testing.T, w *httptest.ResponseRecorder) int {
+		var resp struct {
+			Information Information `json:"information"`
+		}
+		assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		return resp.Information.Status.Error
+	}
+
+	t.Run("world redirects to current rotation page 1", func(t *testing.T) {
+		w := serve("/v5/leaderboards/Antica")
+		assert.Equal(t, http.StatusMovedPermanently, w.Code)
+		assert.Equal(t, "/v5/leaderboards/Antica/current/1", w.Header().Get("Location"))
+		assert.Equal(t, "public, max-age=900, s-maxage=900", w.Header().Get(cacheControlHeader))
+	})
+
+	t.Run("v4 has no leaderboards", func(t *testing.T) {
+		for _, path := range []string{"/v4/leaderboards/Antica", "/v4/leaderboards/Antica/current/1"} {
+			assert.Equal(t, http.StatusNotFound, serve(path).Code, path)
+		}
+	})
+
+	t.Run("invalid rotation", func(t *testing.T) {
+		for _, path := range []string{"/v5/leaderboards/Antica/abc/1", "/v5/leaderboards/Antica/0/1", "/v5/leaderboards/Antica/-1"} {
+			w := serve(path)
+			assert.Equal(t, http.StatusBadRequest, w.Code, path)
+			assert.Equal(t, validation.ErrorLeaderboardRotationInvalid.Code(), errorCode(t, w), path)
+		}
+	})
+
+	t.Run("invalid page", func(t *testing.T) {
+		w := serve("/v5/leaderboards/Antica/current/0")
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, validation.ErrorHighscorePageInvalid.Code(), errorCode(t, w))
+	})
+
+	t.Run("unknown world", func(t *testing.T) {
+		w := serve("/v5/leaderboards/Notaworld/current/1")
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.Equal(t, validation.ErrorWorldDoesNotExist.Code(), errorCode(t, w))
+	})
+}
+
+func TestLeaderboardsRotationDoesNotExistIsNotFound(t *testing.T) {
+	assert.True(t, tibiaDataValidationErrorIsNotFound(validation.ErrorLeaderboardRotationDoesNotExist))
+	assert.Equal(t, http.StatusNotFound, tibiaDataValidationErrorHTTPCode(validation.ErrorLeaderboardRotationDoesNotExist, 0))
 }
