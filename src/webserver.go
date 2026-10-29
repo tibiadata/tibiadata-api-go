@@ -787,22 +787,26 @@ func tibiaLeaderboards(c *gin.Context) {
 	rotation := strings.ToLower(c.Param("rotation"))
 	page := c.Param("page")
 
-	// checking the rotation provided
+	// checking the rotation provided (0 means the current rotation)
 	if rotation == "" {
 		rotation = "current"
 	}
+	var rotationID int
 	if rotation != "current" {
-		if rotationID, err := strconv.Atoi(rotation); err != nil || rotationID < 1 {
+		var err error
+		if rotationID, err = strconv.Atoi(rotation); err != nil || rotationID < 1 {
 			TibiaDataErrorHandler(c, validation.ErrorLeaderboardRotationInvalid, http.StatusBadRequest)
 			return
 		}
+		rotation = strconv.Itoa(rotationID)
 	}
 
 	// checking the page provided
 	if page == "" {
 		page = "1"
 	}
-	if TibiaDataStringToInteger(page) < 1 {
+	pageNumber := TibiaDataStringToInteger(page)
+	if pageNumber < 1 {
 		TibiaDataErrorHandler(c, validation.ErrorHighscorePageInvalid, http.StatusBadRequest)
 		return
 	}
@@ -822,15 +826,9 @@ func tibiaLeaderboards(c *gin.Context) {
 		return
 	}
 
-	tibiaURL := "https://www.tibia.com/community/?subtopic=leaderboards&world=" + TibiaDataQueryEscapeString(world)
-	if rotation != "current" {
-		tibiaURL += "&rotation=" + TibiaDataQueryEscapeString(rotation)
-	}
-	tibiaURL += "&currentpage=" + TibiaDataQueryEscapeString(page)
-
 	tibiadataRequest := TibiaDataRequestStruct{
 		Method:      resty.MethodGet,
-		URL:         tibiaURL,
+		URL:         tibiaLeaderboardsURL(world, rotationID, pageNumber),
 		CacheMaxAge: cacheMaxAgeLeaderboards,
 	}
 
@@ -838,9 +836,18 @@ func tibiaLeaderboards(c *gin.Context) {
 		c,
 		tibiadataRequest,
 		func(BoxContentHTML string) (interface{}, error) {
-			return TibiaLeaderboardsImpl(world, rotation, TibiaDataStringToInteger(page), BoxContentHTML, tibiadataRequest.URL)
+			return TibiaLeaderboardsImpl(world, rotation, pageNumber, BoxContentHTML, tibiadataRequest.URL)
 		},
 		"TibiaLeaderboards")
+}
+
+// tibiaLeaderboardsURL builds the tibia.com leaderboards URL; rotationID 0 requests the current rotation
+func tibiaLeaderboardsURL(world string, rotationID, page int) string {
+	tibiaURL := "https://www.tibia.com/community/?subtopic=leaderboards&world=" + TibiaDataQueryEscapeString(world)
+	if rotationID > 0 {
+		tibiaURL += "&rotation=" + strconv.Itoa(rotationID)
+	}
+	return tibiaURL + "&currentpage=" + strconv.Itoa(page)
 }
 
 // House godoc

@@ -89,6 +89,11 @@ func TibiaLeaderboardsImpl(world, rotation string, currentPage int, BoxContentHT
 		}
 	})
 
+	// Without the rotation list we cannot tell which rotation tibia.com served
+	if len(availableRotations) == 0 {
+		return LeaderboardsResponse{}, fmt.Errorf("[error] TibiaLeaderboardsImpl found no rotation list")
+	}
+
 	if rotation != "current" {
 		requestedRotation, err := strconv.Atoi(rotation)
 		if err != nil || requestedRotation != selectedRotation.RotationID {
