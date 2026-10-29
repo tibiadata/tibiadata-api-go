@@ -115,6 +115,22 @@ func TestLeaderboardsPageTooBig(t *testing.T) {
 	assert.ErrorIs(t, err, validation.ErrorHighscorePageTooBig)
 }
 
+func TestLeaderboardsMissingRotationList(t *testing.T) {
+	// without the rotation list we cannot tell which rotation tibia.com served
+	_, err := TibiaLeaderboardsImpl("Antica", "current", 1, "<html><body><div class=\"BoxContent\"></div></body></html>", "")
+	assert.Error(t, err)
+
+	var validationError validation.Error
+	assert.NotErrorAs(t, err, &validationError)
+}
+
+func TestTibiaLeaderboardsURL(t *testing.T) {
+	assert := assert.New(t)
+
+	assert.Equal("https://www.tibia.com/community/?subtopic=leaderboards&world=Antica&currentpage=1", tibiaLeaderboardsURL("Antica", 0, 1))
+	assert.Equal("https://www.tibia.com/community/?subtopic=leaderboards&world=Antica&rotation=138&currentpage=15", tibiaLeaderboardsURL("Antica", 138, 15))
+}
+
 func TestLeaderboardsEmptyCurrent(t *testing.T) {
 	leaderboardsJson, err := TibiaLeaderboardsImpl("Antica", "current", 1, readLeaderboardsTestFile(t, "Antica-current-never.html"), "")
 	if err != nil {
