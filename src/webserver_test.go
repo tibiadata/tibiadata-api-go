@@ -591,7 +591,7 @@ func TestTibiaDataAPIHandleCachedResponse(t *testing.T) {
 		{name: "guilds", maxAge: cacheMaxAgeGuilds, cacheHeader: "public, max-age=120, s-maxage=120"},
 		{name: "highscores", maxAge: cacheMaxAgeHighscores, cacheHeader: "public, max-age=900, s-maxage=900"},
 		{name: "houses", maxAge: cacheMaxAgeHouses, cacheHeader: "public, max-age=300, s-maxage=300"},
-		{name: "news", maxAge: cacheMaxAgeNews, cacheHeader: "public, max-age=900, s-maxage=900"},
+		{name: "news", maxAge: cacheMaxAgeNews, cacheHeader: "public, max-age=300, s-maxage=300"},
 		{name: "worlds", maxAge: cacheMaxAgeWorlds, cacheHeader: "public, max-age=60, s-maxage=60"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
