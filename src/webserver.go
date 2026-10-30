@@ -48,7 +48,7 @@ const (
 	cacheMaxAgeGuilds     = 120 * time.Second
 	cacheMaxAgeHighscores = 900 * time.Second
 	cacheMaxAgeHouses     = 300 * time.Second
-	cacheMaxAgeNews       = 900 * time.Second
+	cacheMaxAgeNews       = 300 * time.Second
 	cacheMaxAgeWorlds     = 60 * time.Second
 	cacheControlHeader    = "Cache-Control"
 	userAgentHeader       = "User-Agent"
