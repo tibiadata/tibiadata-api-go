@@ -1,6 +1,6 @@
 ---
 name: create-release
-description: Prepare a TibiaData API Go release or publish it on request after the changelog PR is merged, including changelog formatting, author mentions, new contributors, comparison links, and release workflow verification.
+description: Prepare a TibiaData API Go release, create a reviewable draft after the changelog PR merges, or publish on explicit request, including release notes and workflow verification.
 ---
 
 # Create a release
@@ -8,6 +8,7 @@ description: Prepare a TibiaData API Go release or publish it on request after t
 ## Authorization
 
 - Preparation does not authorize creating a PR, pushing tags, publishing a release, or deploying. Publication is on request after the changelog PR merges, not automatic on merge.
+- When asked to create a GitHub release after merge without explicitly requesting publication, create an unpublished draft for review. Draft creation is not authorization to publish. The user can edit its notes on GitHub and publish it themselves or explicitly ask Copilot to publish it.
 - An explicit request to publish a particular release authorizes publication and its existing publication-triggered workflows. Before publishing, re-read `.github/workflows/build.yml`, `documentation.yml`, and `dockerhub.yml`: publication pushes images and dispatches production-related updates.
 - Never move an existing release tag or edit an existing release without authorization.
 - Only stable releases are supported for now. Do not create prereleases, use `--prerelease`, or publish prerelease-version tags such as `vX.Y.Z-rc.1`. The current `release: published` workflows also run for prereleases and dispatch production-targeted updates; prerelease support requires a separately approved workflow change first.
@@ -63,14 +64,16 @@ Use this template, replacing every placeholder with verified release data. Inclu
 **Full Changelog**: https://github.com/tibiadata/tibiadata-api-go/compare/<PREVIOUS_TAG>...<NEW_TAG>
 ```
 
-## Publish on request after the changelog PR is merged
+## Create a draft or publish after the changelog PR is merged
 
 1. Verify the changelog PR is merged into the intended release branch using GitHub's live PR state. Identify the resulting merge/squash/rebase commit and confirm the intended target includes the merged changelog. Do not tag an unmerged feature branch or assume the current worktree/default-branch tip is the intended release commit. If additional commits landed after preparation, resolve the intended target before publishing.
 2. Read `CHANGELOG.md` from that exact remote target commit, not a local copy. Confirm the requested version, release date, bottom comparison reference, previous release tag, and CI status. For a publication-only request, do not regenerate or rewrite the merged changelog; report discrepancies before proceeding.
-3. Check for an existing release and remote tag. If the release exists, report its URL rather than creating a duplicate. If a tag exists, resolve annotated tags to their commit and require it to match the confirmed target.
-4. Build the release body using the format above and save it in session artifacts. Verify it contains only the requested version's changes, author mentions throughout, New Contributors when applicable, and exactly one correct Full Changelog footer.
-5. Publish with the authenticated `gh release create`, explicitly supplying `--repo tibiadata/tibiadata-api-go`, the `vX.Y.Z` tag, `--title`, and `--notes-file` pointing to the curated body. If the remote tag does not exist, pass `--target` with the full confirmed commit SHA so GitHub creates the tag at that commit. If the tag already exists and matches, use `--verify-tag`. Check the release line before choosing latest status; use `--latest=false` for a maintenance release that must not replace the latest stable line. Do not use `--generate-notes`: publish the curated body, not GitHub's generated change list.
-6. Verify the resulting release is published with the correct tag/target and complete notes, then perform the workflow verification below.
+3. Check for an existing release and remote tag. Reuse an existing draft rather than creating a duplicate; report an already-published release without editing it. If a tag exists, resolve annotated tags to their commit and require it to match the confirmed target.
+4. For a new release, build the body using the format above and save it in session artifacts. Verify it contains only the requested version's changes, author mentions throughout, New Contributors when applicable, and exactly one correct Full Changelog footer.
+5. Create with the authenticated `gh release create`, explicitly supplying `--repo tibiadata/tibiadata-api-go`, the `vX.Y.Z` tag, `--title`, and `--notes-file` pointing to the curated body. Include `--draft` unless the user explicitly requested immediate publication. If the remote tag does not exist, pass `--target` with the full confirmed commit SHA, including for drafts, so eventual tag creation does not follow a moving branch. If the tag already exists and matches, use `--verify-tag`. Do not use `--generate-notes`: use the curated body, not GitHub's generated change list.
+6. For a draft, verify `isDraft` is true, the release is not a prerelease, and its target and notes are correct. Return its actual URL for editing and stop; the existing `release: published` workflows should not run until publication.
+7. When explicitly asked to publish an existing draft, re-read its live body, tag, target, and prerelease status. Preserve user edits: do not regenerate or replace its notes from the changelog. Recheck the target/CI and required notes format; surface missing information or conflicting edits for review rather than silently overwriting them. Publish the existing draft with `gh release edit <TAG> --repo tibiadata/tibiadata-api-go --draft=false`, without passing replacement notes.
+8. For either publication path, check the release line before choosing latest status; explicitly use `--latest=false` for a maintenance release that must not replace the latest stable line. Verify the resulting release is published with the correct tag/target and reviewed notes, then perform the workflow verification below.
 
 ## Verify after publication
 
