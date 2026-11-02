@@ -24,7 +24,7 @@ applyTo: "CHANGELOG.md"
   ```
 
 - Verify titles, PR numbers, and authors from GitHub. Do not invent entries or copy example placeholders into the changelog.
-- The examples above describe the repository changelog. When turning an entry into GitHub release notes, follow the release skill: use plain `@username` mentions for authors, include verified new contributors when present, and end with an explicit Full Changelog comparison link. Keep historical changelog attribution unchanged.
+- The examples above describe the repository changelog. When turning an entry into GitHub release notes, follow the release skill: use plain `@username` mentions for authors, omit `[bot]` from bot mentions (for example, `dependabot[bot]` becomes `@dependabot`), include verified new contributors when present, and end with an explicit Full Changelog comparison link. Keep historical changelog attribution unchanged.
 - Include all verified merged PRs in the release range unless they are routine merge or formatting noise. Do not retroactively reformat historical entries unless requested or correcting an omission/error.
 - Consolidate repeated dependency bumps for the same dependency within the release into one bullet. Describe the version range from the earliest old version to the final new version; do not retain intermediate ranges or repeat each PR title. Link every contributing PR in chronological order:
 
