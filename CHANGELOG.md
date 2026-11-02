@@ -4,20 +4,25 @@
 
 ### Added
 
-- Export application logs through OpenTelemetry alongside traces and metrics; log export defaults to OTLP when telemetry is enabled ([#804](https://github.com/tibiadata/tibiadata-api-go/pull/804) by [tobiasehlert](https://github.com/tobiasehlert))
+- feat(telemetry): export application logs through the slog bridge ([#804](https://github.com/tibiadata/tibiadata-api-go/pull/804) by [tobiasehlert](https://github.com/tobiasehlert))
 
 ### Changed
 
-- deps(ci): bump the codeql-action group with 3 updates ([#800](https://github.com/tibiadata/tibiadata-api-go/pull/800) by [dependabot](https://github.com/dependabot))
+- chore: copilot app config ([#810](https://github.com/tibiadata/tibiadata-api-go/pull/810) by [tobiasehlert](https://github.com/tobiasehlert))
+- chore: enable remote control ([#812](https://github.com/tibiadata/tibiadata-api-go/pull/812) by [tobiasehlert](https://github.com/tobiasehlert))
+- docs(highscores): document canonical category redirects ([#799](https://github.com/tibiadata/tibiadata-api-go/pull/799) by [tobiasehlert](https://github.com/tobiasehlert))
+- docs(release): add changelog and publication guidance ([#811](https://github.com/tibiadata/tibiadata-api-go/pull/811) by [tobiasehlert](https://github.com/tobiasehlert))
+- docs(release): prepare v5.1.0 changelog ([#813](https://github.com/tibiadata/tibiadata-api-go/pull/813) by [tobiasehlert](https://github.com/tobiasehlert))
 - deps(ci): bump docker/login-action from 4.6.0 to 4.7.0 ([#801](https://github.com/tibiadata/tibiadata-api-go/pull/801) by [dependabot](https://github.com/dependabot))
 - deps(ci): bump tailscale/github-action from 4.2.0 to 4.4.0 ([#802](https://github.com/tibiadata/tibiadata-api-go/pull/802), [#808](https://github.com/tibiadata/tibiadata-api-go/pull/808) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump the codeql-action group with 3 updates ([#800](https://github.com/tibiadata/tibiadata-api-go/pull/800) by [dependabot](https://github.com/dependabot))
 - deps(docker): bump alpine from 3.24.2 to 3.24.3 ([#803](https://github.com/tibiadata/tibiadata-api-go/pull/803) by [dependabot](https://github.com/dependabot))
-- deps(go): bump `golang.org/x/net` from 0.61.0 to 0.62.0 ([#809](https://github.com/tibiadata/tibiadata-api-go/pull/809) by [dependabot](https://github.com/dependabot))
+- deps(go): bump golang.org/x/net from 0.61.0 to 0.62.0 ([#809](https://github.com/tibiadata/tibiadata-api-go/pull/809) by [dependabot](https://github.com/dependabot))
 
 ### Fixed
 
-- Restore the news endpoint cache TTL to 300 seconds ([#807](https://github.com/tibiadata/tibiadata-api-go/pull/807) by [tobiasehlert](https://github.com/tobiasehlert))
-- Format house-payment dates in the Europe/Berlin timezone ([#795](https://github.com/tibiadata/tibiadata-api-go/pull/795) by [tobiasehlert](https://github.com/tobiasehlert))
+- fix(cache): restore news cache TTL to 300 seconds ([#807](https://github.com/tibiadata/tibiadata-api-go/pull/807) by [tobiasehlert](https://github.com/tobiasehlert))
+- fix(character): use Berlin date for house payments ([#795](https://github.com/tibiadata/tibiadata-api-go/pull/795) by [tobiasehlert](https://github.com/tobiasehlert))
 
 ## [5.0.0] - 2026-10-23
 

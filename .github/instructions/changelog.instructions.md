@@ -4,7 +4,7 @@ applyTo: "CHANGELOG.md"
 
 # Changelog formatting
 
-- Follow [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/): curate notable changes for humans, not a dump of commits or merged PR titles. Use [Semantic Versioning](https://semver.org/) for release versions.
+- Follow [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) and use [Semantic Versioning](https://semver.org/) for release versions.
 - Preserve the existing `# Changelog` heading and historical release entries.
 - Curate the changelog during release preparation, collecting notable changes since the verified previous release tag into one dated entry in the release PR. Do not require per-PR changelog updates or add an Unreleased section/reference. Unreleased is an optional Keep a Changelog practice that this repository does not use. List releases newest first.
 - Use `## [X.Y.Z] - YYYY-MM-DD`: no `v` prefix in the heading. Use the agreed release date; ask if it is not known rather than inventing a publication date.
@@ -17,7 +17,7 @@ applyTo: "CHANGELOG.md"
 - Replace the placeholders with the verified previous release tag for the intended release line and the new release tag. Before finishing, confirm the heading's reference resolves to this definition and the comparison endpoints match the release's actual change range. A release entry without its bottom comparison link is incomplete.
 - Use `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, and `### Security`, in that order, omitting empty categories. Classify by the actual change, not the commit prefix.
 - Added covers new features; Changed covers changes in existing functionality; Deprecated covers features scheduled for removal; Removed covers removed features; Fixed covers bug fixes; Security covers vulnerability fixes. Explicitly describe breaking changes, deprecations, removals, and migration implications.
-- Use one bullet per notable change, with a clear user-facing description and links to the relevant PRs and authors. Summarize related commits/PRs together when they describe one change; do not require Conventional Commit prefixes in changelog prose:
+- Preserve verified pull request titles verbatim in changelog bullets, including Conventional Commit prefixes, and link each PR and its author. When consolidating repeated updates to the same dependency, use a single title-style bullet with the earliest old version and final new version, and include every contributing PR in chronological order:
 
   ```markdown
   - Correct achievement grades in character responses ([#123](https://github.com/tibiadata/tibiadata-api-go/pull/123) by [username](https://github.com/username))
@@ -25,8 +25,8 @@ applyTo: "CHANGELOG.md"
 
 - Verify titles, PR numbers, and authors from GitHub. Do not invent entries or copy example placeholders into the changelog.
 - The examples above describe the repository changelog. When turning an entry into GitHub release notes, follow the release skill: use plain `@username` mentions for authors, include verified new contributors when present, and end with an explicit Full Changelog comparison link. Keep historical changelog attribution unchanged.
-- Use PR titles as evidence, not mandatory wording. Exclude routine merge/formatting noise, but include every important change. Do not retroactively reformat historical entries unless requested or correcting an omission/error.
-- Consolidate repeated dependency bumps for the same dependency within the release into one bullet, using the earliest old version and final new version and linking every contributing PR in chronological order:
+- Include all verified merged PRs in the release range unless they are routine merge or formatting noise. Do not retroactively reformat historical entries unless requested or correcting an omission/error.
+- Consolidate repeated dependency bumps for the same dependency within the release into one bullet. Describe the version range from the earliest old version to the final new version; do not retain intermediate ranges or repeat each PR title. Link every contributing PR in chronological order:
 
   ```markdown
   - deps(go): bump `golang.org/x/net` from 0.58.0 to 0.61.0 ([#728](https://github.com/tibiadata/tibiadata-api-go/pull/728), [#766](https://github.com/tibiadata/tibiadata-api-go/pull/766) by [dependabot](https://github.com/dependabot))
