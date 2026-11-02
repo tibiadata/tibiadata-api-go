@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.1.0] - 2026-11-02
+
+### Added
+
+- Export application logs through OpenTelemetry alongside traces and metrics; log export defaults to OTLP when telemetry is enabled ([#804](https://github.com/tibiadata/tibiadata-api-go/pull/804) by [tobiasehlert](https://github.com/tobiasehlert))
+
+### Changed
+
+- deps(ci): bump the codeql-action group with 3 updates ([#800](https://github.com/tibiadata/tibiadata-api-go/pull/800) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump docker/login-action from 4.6.0 to 4.7.0 ([#801](https://github.com/tibiadata/tibiadata-api-go/pull/801) by [dependabot](https://github.com/dependabot))
+- deps(ci): bump tailscale/github-action from 4.2.0 to 4.4.0 ([#802](https://github.com/tibiadata/tibiadata-api-go/pull/802), [#808](https://github.com/tibiadata/tibiadata-api-go/pull/808) by [dependabot](https://github.com/dependabot))
+- deps(docker): bump alpine from 3.24.2 to 3.24.3 ([#803](https://github.com/tibiadata/tibiadata-api-go/pull/803) by [dependabot](https://github.com/dependabot))
+- deps(go): bump `golang.org/x/net` from 0.61.0 to 0.62.0 ([#809](https://github.com/tibiadata/tibiadata-api-go/pull/809) by [dependabot](https://github.com/dependabot))
+
+### Fixed
+
+- Restore the news endpoint cache TTL to 300 seconds ([#807](https://github.com/tibiadata/tibiadata-api-go/pull/807) by [tobiasehlert](https://github.com/tobiasehlert))
+- Format house-payment dates in the Europe/Berlin timezone ([#795](https://github.com/tibiadata/tibiadata-api-go/pull/795) by [tobiasehlert](https://github.com/tobiasehlert))
+
 ## [5.0.0] - 2026-10-23
 
 ### The release of API v5
@@ -850,6 +869,7 @@ Head over to [tibiadata.com](https://tibiadata.com/2022/03/tibiadata-api-v3-rele
 
 Initial commit
 
+[5.1.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v5.0.0...v5.1.0
 [5.0.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.10.0...v5.0.0
 [4.10.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.9.0...v4.10.0
 [4.9.0]: https://github.com/tibiadata/tibiadata-api-go/compare/v4.8.0...v4.9.0

@@ -5,7 +5,7 @@ applyTo: "CHANGELOG.md"
 # Changelog formatting
 
 - Follow [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/): curate notable changes for humans, not a dump of commits or merged PR titles. Use [Semantic Versioning](https://semver.org/) for release versions.
-- Preserve the existing `# Changelog` heading and historical release entries. When updating the changelog, include a short statement below the title linking to Keep a Changelog and Semantic Versioning.
+- Preserve the existing `# Changelog` heading and historical release entries.
 - Curate the changelog during release preparation, collecting notable changes since the verified previous release tag into one dated entry in the release PR. Do not require per-PR changelog updates or add an Unreleased section/reference. Unreleased is an optional Keep a Changelog practice that this repository does not use. List releases newest first.
 - Use `## [X.Y.Z] - YYYY-MM-DD`: no `v` prefix in the heading. Use the agreed release date; ask if it is not known rather than inventing a publication date.
 - Every new release heading must have exactly one matching reference definition in the comparison-link block at the bottom of the file. Add it above the existing definitions (newest first), preserving historical links:
