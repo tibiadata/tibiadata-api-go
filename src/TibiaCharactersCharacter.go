@@ -142,7 +142,7 @@ func fansiteUnixToDate(ts int64) string {
 	if ts <= 0 {
 		return ""
 	}
-	return time.Unix(ts, 0).UTC().Format("2006-01-02")
+	return time.Unix(ts, 0).In(berlinLocation).Format("2006-01-02")
 }
 
 // fansiteDeathReason computes a human-readable death reason sentence for the
