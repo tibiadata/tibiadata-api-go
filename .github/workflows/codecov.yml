@@ -39,3 +39,34 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: TibiaData/tibiadata-api-go
+
+      - name: Convert coverage to Cobertura format
+        run: |
+          go tool -modfile=tools/go.mod gocover-cobertura < coverage.out > coverage-cobertura.xml
+
+      - name: Upload coverage artifact
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-report-go
+          path: coverage-cobertura.xml
+
+  upload-coverage-go:
+    needs: codecov
+    if: ${{ !cancelled() && needs.codecov.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      code-quality: write
+    steps:
+      - name: Download coverage artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: coverage-report-go
+
+      - name: Upload coverage to GitHub
+        uses: actions/upload-code-coverage@2b21a77928be8d5168c2b9581a67f2adbebacc52 # v1.4.4
+        with:
+          file: coverage-cobertura.xml
+          language: Go
+          label: code-coverage-agent

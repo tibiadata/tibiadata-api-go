@@ -23,3 +23,6 @@
 # VS Code Launch file
 launch.json
 /src/src
+
+# Cobertura coverage reports
+coverage-cobertura.xml
