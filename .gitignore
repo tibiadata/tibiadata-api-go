@@ -25,4 +25,4 @@ launch.json
 /src/src
 
 # Cobertura coverage reports
-coverage-cobertura.xml
+coverage.xml
