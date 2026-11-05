@@ -124,6 +124,9 @@ The following environment variables can be used to configure the API.
 | `GIN_MODE` | `release` | Gin mode: `release`, `debug` or `test`. |
 | `GIN_TRUSTED_PROXIES` | _(none)_ | Comma-separated list of trusted proxies (IPs/CIDRs). When unset, no proxies are trusted. |
 | `TIBIADATA_CACHE_CONTROL_HEADERS` | `true` | Adds fixed, endpoint-specific `Cache-Control` headers to successful data responses (see below). |
+| `TIBIADATA_CORS_ALLOW_HEADERS` | _(empty)_ | Comma-separated request header names added to the CORS defaults (`Origin,Content-Type`). Only used when CORS is enabled. |
+| `TIBIADATA_CORS_ALLOW_ORIGINS` | _(empty)_ | Enables CORS for a comma-separated list of exact HTTP(S) origins, or `*` alone for any origin. Unset or empty disables CORS. |
+| `TIBIADATA_CORS_EXPOSE_HEADERS` | _(empty)_ | Comma-separated response header names that cross-origin browser JavaScript may read. Only used when CORS is enabled. |
 | `TIBIADATA_EDITION` | `open-source` | Edition name reported by the API. |
 | `TIBIADATA_HOST` | _(empty)_ | Hostname used when generating API URLs (e.g. in news and the OpenAPI docs). |
 | `TIBIADATA_LOG_CF_RAY` | `false` | Logs Cloudflare's `Cf-Ray` header as `request_id` when `true`. Enable only when the API is reachable exclusively through Cloudflare. |
@@ -135,6 +138,24 @@ The following environment variables can be used to configure the API.
 | `TIBIADATA_PROXY_PROTOCOL` | `https` | Protocol for `TIBIADATA_PROXY` (`http` or `https`). Only used when `TIBIADATA_PROXY` is set. |
 | `TIBIADATA_RESTRICTION_MODE` | `false` | Enables restriction mode, which disables expensive requests (e.g. highscores with vocation `all`). |
 | `TIBIA_FANSITEAPI_TOKEN` | _(empty)_ | Token for the official Tibia Fansite API. Enables the [Fansite API](#fansite-api) when valid. |
+
+### CORS
+
+CORS is disabled by default. Example configuration:
+
+```bash
+TIBIADATA_CORS_ALLOW_ORIGINS=https://example.com,https://app.example.com
+TIBIADATA_CORS_ALLOW_HEADERS=Authorization,X-Requested-With
+TIBIADATA_CORS_EXPOSE_HEADERS=Age,CF-Cache-Status,CF-Ray
+```
+
+Origins must be exact HTTP(S) origins with an optional port and no path or trailing slash; `*` alone allows any origin.
+When enabled, CORS covers all routes, advertises `GET`, handles `OPTIONS` automatically and caches preflights for 12 hours. Credentials are disabled.
+
+`ALLOW_HEADERS` extends the default `Origin,Content-Type` request headers. `EXPOSE_HEADERS` lets browser JavaScript read additional response headers without creating them; `Cache-Control`, `Content-Type` and `Last-Modified` are already readable.
+Both header settings default to empty and require explicit names (no `*`). Whitespace around entries is ignored; invalid origins or header names and empty list entries prevent startup when CORS is enabled.
+
+CORS is not authentication: requests without an `Origin` header are unaffected.
 
 ### Request correlation
 

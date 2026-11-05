@@ -171,6 +171,9 @@ func runWebServer() {
 	}
 	router.Use(ginAccessLogMiddleware())
 	router.Use(ginRecoveryMiddleware())
+	if err := configureCORS(router); err != nil {
+		tibiaDataLogFatal("TibiaData API CORS configuration is invalid", err)
+	}
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	registerStaticRoutes(router)
