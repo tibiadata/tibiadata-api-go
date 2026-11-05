@@ -24,6 +24,37 @@ var _ = func() bool {
 	return true
 }()
 
+func TestGinSecurityHeadersMiddleware(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(ginSecurityHeadersMiddleware())
+	router.GET("/v5/test", func(c *gin.Context) {
+		TibiaDataAPIHandleResponse(c, "test", OutInformation{
+			Information: Information{APIDetails: TibiaDataAPIDetails},
+		})
+	})
+	router.NoRoute(func(c *gin.Context) {
+		TibiaDataErrorHandler(c, ErrorNotFound, http.StatusNotFound)
+	})
+
+	for _, test := range []struct {
+		path   string
+		status int
+	}{
+		{path: "/v5/test", status: http.StatusOK},
+		{path: "/v5/missing", status: http.StatusNotFound},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, test.path, nil))
+
+			assert.Equal(t, test.status, w.Code)
+			assert.Equal(t, "nosniff", w.Result().Header.Get("X-Content-Type-Options"))
+			assert.Contains(t, w.Result().Header.Get("Content-Type"), "application/json")
+		})
+	}
+}
+
 func TestFakeToUpCodeCoverage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

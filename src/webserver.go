@@ -166,6 +166,7 @@ func runWebServer() {
 	slog.Info("TibiaData API gin-mode", "mode", gin.Mode())
 
 	router := gin.New()
+	router.Use(ginSecurityHeadersMiddleware())
 	if tibiaDataTelemetryActive() {
 		router.Use(ginTelemetryMiddleware())
 	}
@@ -290,6 +291,13 @@ func runWebServer() {
 		} else {
 			tibiaDataLogFatal("TibiaData API server closed unexpectedly", err)
 		}
+	}
+}
+
+func ginSecurityHeadersMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Next()
 	}
 }
 
