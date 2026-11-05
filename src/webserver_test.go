@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -694,6 +695,43 @@ func TestCheckTibiaFansiteAPIStatus(t *testing.T) {
 		TibiaFansiteAPIStatusURL = "http://127.0.0.1:0"
 		checkTibiaFansiteAPIStatus()
 	})
+}
+
+func TestRegisterStaticRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Chdir(t.TempDir())
+
+	router := gin.New()
+	registerStaticRoutes(router)
+
+	favicon, err := webAssets.ReadFile("assets/favicon.ico")
+	if !assert.NoError(t, err) {
+		return
+	}
+	assert.True(t, bytes.HasPrefix(favicon, []byte{0, 0, 1, 0}))
+
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		t.Run(method, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest(method, "/favicon.ico", nil))
+
+			assert.Equal(t, http.StatusOK, w.Code)
+			assert.Contains(t, []string{"image/vnd.microsoft.icon", "image/x-icon"}, w.Header().Get("Content-Type"))
+			assert.Equal(t, fmt.Sprint(len(favicon)), w.Header().Get("Content-Length"))
+			assert.Empty(t, w.Header().Get("Location"))
+			if method == http.MethodGet {
+				assert.Equal(t, favicon, w.Body.Bytes())
+			} else {
+				assert.Empty(t, w.Body.Bytes())
+			}
+		})
+	}
+
+	for _, path := range []string{"/assets/", "/assets/favicon.ico", "/favicon.ico/missing"} {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		assert.Equal(t, http.StatusNotFound, w.Code, path)
+	}
 }
 
 func TestRegisterAPIVersionRoutes(t *testing.T) {

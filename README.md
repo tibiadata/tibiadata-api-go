@@ -81,6 +81,8 @@ You can also use [Docker Hub](https://hub.docker.com/r/tibiadata/tibiadata-api-g
 
 If you want to run the latest code you can switch from _latest_ to _edge_.
 
+The [TibiaData favicon](https://assets.tibiadata.com/favicon.ico) is served directly at `/favicon.ico`. It is embedded in the binary, so no additional files, volume mounts, or ingress plugins are needed.
+
 ### Docker-compose
 
 This is a simple example on how you can get up and running with TibiaData in docker-compose, which will be running on port 8080 and be exposed locally.

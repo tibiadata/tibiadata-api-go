@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,6 +43,9 @@ var (
 	// ErrorNotFound will be returned if the requests ends up in a 404
 	ErrorNotFound = errors.New("page not found")
 )
+
+//go:embed assets/favicon.ico
+var webAssets embed.FS
 
 const (
 	cacheMaxAgeCharacters = 300 * time.Second
@@ -169,6 +173,8 @@ func runWebServer() {
 	router.Use(ginRecoveryMiddleware())
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
+	registerStaticRoutes(router)
+
 	// Set 404 not found page
 	router.NoRoute(func(c *gin.Context) {
 		TibiaDataErrorHandler(
@@ -282,6 +288,10 @@ func runWebServer() {
 			tibiaDataLogFatal("TibiaData API server closed unexpectedly", err)
 		}
 	}
+}
+
+func registerStaticRoutes(router *gin.Engine) {
+	router.StaticFileFS("/favicon.ico", "assets/favicon.ico", http.FS(webAssets))
 }
 
 func registerAPIVersions(router *gin.Engine) {
