@@ -39,7 +39,7 @@ jobs:
       - name: Run tests with coverage
         shell: bash
         run: |
-          go test -race -coverprofile=coverage.out -covermode=atomic `go list ./... | grep -v vendor/` -v
+          go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Convert coverage report to Cobertura format
         shell: bash
