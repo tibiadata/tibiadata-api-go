@@ -533,6 +533,12 @@ func TestErrors(t *testing.T) {
 		ErrorHighscorePageTooBig: {
 			Code: 11008,
 		},
+		ErrorLeaderboardRotationInvalid: {
+			Code: 11009,
+		},
+		ErrorLeaderboardRotationDoesNotExist: {
+			Code: 11010,
+		},
 		ErrorCreatureNameEmpty: {
 			Code: 12001,
 		},
